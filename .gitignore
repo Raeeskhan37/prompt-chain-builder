@@ -1,0 +1,17 @@
+# Secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Cloudflare installer
+*.deb
+
+# Backups
+app_backup.py
+
+# Checkpoints
+checkpoints/
+
+# Python cache
+__pycache__/
+*.pyc
