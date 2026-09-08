@@ -151,9 +151,14 @@ st.markdown("""
 api_key = os.environ.get("GROQ_API_KEY")
 
 if not api_key:
-    st.error(
-        "Groq API key is not available in the current Colab session."
-    )
+    try:
+        api_key = st.secrets["GROQ_API_KEY"]
+    except Exception:
+        api_key = None
+
+if not api_key:
+    st.error("Groq API key is not configured.")
+    st.info("Please add GROQ_API_KEY in Streamlit Cloud Secrets.")
     st.stop()
 
 client = Groq(api_key=api_key)
