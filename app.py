@@ -542,7 +542,7 @@ with col1:
 
 st.session_state.workflow_name = workflow_name
 
-    if workflow_name != st.session_state.workflow_name:
+if workflow_name != st.session_state.workflow_name:
         st.session_state.workflow_name = workflow_name
         clear_results()
 
