@@ -588,7 +588,7 @@ for index, stage in enumerate(
     # --------------------------------------------------------
 
     with st.expander(
-        f"⚙️ Configure Stage {stage_number}",
+        f"✏️ Edit Stage {stage_number}: {stage['name']}",
         expanded=index == 0,
     ):
 
