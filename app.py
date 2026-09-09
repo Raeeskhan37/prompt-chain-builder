@@ -728,11 +728,6 @@ st.caption(
 # ============================================================
 
 st.markdown("## ⚙️ Workflow Information")
-# ============================================================
-# WORKFLOW INFORMATION
-# ============================================================
-
-st.markdown("## ⚙️ Workflow Information")
 
 col1, col2 = st.columns(2)
 
