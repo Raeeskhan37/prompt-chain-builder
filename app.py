@@ -652,7 +652,7 @@ else:
 
 st.session_state.last_template = template_name
 
-    clear_results()
+clear_results()
 
     st.rerun()
 # ============================================================
