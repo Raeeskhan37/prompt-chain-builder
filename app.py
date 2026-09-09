@@ -1164,36 +1164,35 @@ the next stage of the workflow.
 """
 
 
-            if index == 0:
+            previous_output = ""
 
-                stage_input = f"""
-User Request:
+if index > 0:
+    previous_output = (
+        st.session_state.stage_outputs[index - 1]
+    )
 
-{user_prompt}
-"""
+    previous_output = limit_context(
+        previous_output
+    )
 
-            else:
-
-                previous_output = (
-                    st.session_state.stage_outputs[
-                        index - 1
-                    ]
-                )
-
-                previous_output = limit_context(
-                    previous_output
-                )
-
-                stage_input = f"""
+stage_input = f"""
 Original User Request:
-
 {user_prompt}
+
+Selected Output Intent:
+{st.session_state.output_intent}
 
 Previous Stage Output:
+{previous_output if previous_output else "This is the first stage. There is no previous stage output."}
 
-{previous_output}
+Current Stage:
+{stage['name']}
 
-Now perform the current stage.
+Current Stage Purpose:
+{stage['purpose']}
+
+Now perform the current stage according to its instructions
+and the selected Output Intent.
 """
 
 
