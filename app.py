@@ -654,7 +654,7 @@ st.session_state.last_template = template_name
 
 clear_results()
 
- st.rerun()
+st.rerun()
 # ============================================================
 # WORKFLOW BUILDER
 # ============================================================
