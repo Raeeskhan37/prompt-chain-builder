@@ -656,7 +656,7 @@ st.session_state.workflow_name_input = new_workflow_name
 
 st.session_state.last_template = template_name
 
-    clear_results()
+clear_results()
 
     st.rerun()
 # ============================================================
