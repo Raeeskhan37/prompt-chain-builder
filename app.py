@@ -536,10 +536,11 @@ col1, col2 = st.columns(2)
 
 with col1:
     workflow_name = st.text_input(
-        "Workflow Name",
-        value=st.session_state.workflow_name,
-        key="workflow_name_input",
-    )
+    "Workflow Name",
+    key="workflow_name_input",
+)
+
+st.session_state.workflow_name = workflow_name
 
     if workflow_name != st.session_state.workflow_name:
         st.session_state.workflow_name = workflow_name
@@ -645,10 +646,13 @@ if template_name != st.session_state.last_template:
         selected_template["description"]
     )
 
-    if template_name == "Custom Workflow":
-        st.session_state.workflow_name = "My AI Workflow"
-    else:
-        st.session_state.workflow_name = template_name
+   if template_name == "Custom Workflow":
+    new_workflow_name = "My AI Workflow"
+else:
+    new_workflow_name = template_name
+
+st.session_state.workflow_name = new_workflow_name
+st.session_state.workflow_name_input = new_workflow_name 
 
     st.session_state.last_template = template_name
 
