@@ -1239,14 +1239,14 @@ except Exception as error:
                     f"{error}"
                 )
 
-            break
+break
 
 
         # ----------------------------------------------------
         # WORKFLOW COMPLETION
         # ----------------------------------------------------
 
-        if not workflow_failed:
+if not workflow_failed:
 
             st.session_state.final_answer = (
                 st.session_state.stage_outputs[-1]
@@ -1263,7 +1263,7 @@ except Exception as error:
                 "✅ Workflow completed successfully."
             )
 
-        else:
+else:
 
             progress_bar.empty()
 
@@ -1317,14 +1317,14 @@ if (
         st.session_state.stage_outputs
     ):
 
-        if not output:
-            continue
+if not output:
+        continue
 
         stage_name = (
             st.session_state.stages[index]["name"]
         )
 
-        with st.expander(
+    with st.expander(
             f"Stage {index + 1}: {stage_name}"
         ):
 
