@@ -161,7 +161,120 @@ DEFAULT_STAGES = [
         ),
     },
 ]
+# -----------------------------
+# Workflow Templates
+# -----------------------------
 
+WORKFLOW_TEMPLATES = {
+    "Custom Workflow": {
+        "description": "Build your own multi-stage AI workflow.",
+        "stages": [
+            {
+                "name": "Analysis",
+                "purpose": "Understand and analyze the user's request.",
+                "instruction": "Analyze the user's request carefully. Identify the objective, important requirements, constraints, assumptions, and expected output.",
+            },
+            {
+                "name": "Development",
+                "purpose": "Develop the main solution.",
+                "instruction": "Using the analysis from the previous stage, develop a useful and accurate solution. Include all important details required by the user.",
+            },
+            {
+                "name": "Refinement",
+                "purpose": "Improve clarity, completeness and usefulness.",
+                "instruction": "Review the previous solution and improve it. Remove unnecessary content, correct weaknesses, and make the response clearer and more practical.",
+            },
+            {
+                "name": "Quality Check",
+                "purpose": "Check the response for errors and missing requirements.",
+                "instruction": "Perform a quality check of the previous result. Look for factual problems, missing requirements, logical issues, unclear wording, and inconsistencies.",
+            },
+            {
+                "name": "Final Answer",
+                "purpose": "Produce the final response for the user.",
+                "instruction": "Create the final answer using the improved and quality-checked result. Answer the user's request directly and clearly.",
+            },
+        ],
+    },
+
+    "Email Writer": {
+        "description": "Create professional emails quickly.",
+        "stages": [
+            {
+                "name": "Understand Request",
+                "purpose": "Understand the purpose, recipient and required tone.",
+                "instruction": "Identify the purpose of the email, recipient, important facts, desired tone and required action.",
+            },
+            {
+                "name": "Draft Email",
+                "purpose": "Create the main email.",
+                "instruction": "Write a professional, clear and concise email using the information provided.",
+            },
+            {
+                "name": "Review",
+                "purpose": "Improve professionalism and clarity.",
+                "instruction": "Review the email for grammar, clarity, tone, completeness and professionalism. Improve it where necessary.",
+            },
+            {
+                "name": "Final Email",
+                "purpose": "Produce the final ready-to-send email.",
+                "instruction": "Return the polished final email ready for the user to copy and send.",
+            },
+        ],
+    },
+
+    "Content Writer": {
+        "description": "Create well-structured articles and content.",
+        "stages": [
+            {
+                "name": "Content Analysis",
+                "purpose": "Understand the topic and audience.",
+                "instruction": "Analyze the requested topic, target audience, purpose, tone and important points that should be covered.",
+            },
+            {
+                "name": "Content Creation",
+                "purpose": "Write the main content.",
+                "instruction": "Create useful, engaging and well-structured content based on the analysis.",
+            },
+            {
+                "name": "Content Review",
+                "purpose": "Improve quality and readability.",
+                "instruction": "Review the content for accuracy, structure, readability, completeness and engagement. Improve weak areas.",
+            },
+            {
+                "name": "Final Content",
+                "purpose": "Produce polished final content.",
+                "instruction": "Produce the final polished content with appropriate headings, structure and formatting.",
+            },
+        ],
+    },
+
+    "Study Assistant": {
+        "description": "Explain topics and create useful learning material.",
+        "stages": [
+            {
+                "name": "Understand Topic",
+                "purpose": "Identify the learner's needs.",
+                "instruction": "Understand the topic, learner level, learning objective and important concepts that need to be explained.",
+            },
+            {
+                "name": "Explain",
+                "purpose": "Create a clear explanation.",
+                "instruction": "Explain the topic in simple language appropriate for the learner. Use examples and analogies where helpful.",
+            },
+            {
+                "name": "Learning Review",
+                "purpose": "Check understanding and completeness.",
+                "instruction": "Review the explanation for accuracy, clarity and completeness. Identify anything important that is missing.",
+            },
+            {
+                "name": "Final Lesson",
+                "purpose": "Produce useful learning material.",
+                "instruction": "Create the final learner-friendly explanation with examples, key points and a concise summary.",
+            },
+        ],
+    },
+}
 
 # ============================================================
 # SESSION STATE
