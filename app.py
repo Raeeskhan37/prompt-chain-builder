@@ -624,6 +624,32 @@ template_name = st.selectbox(
 st.caption(
     WORKFLOW_TEMPLATES[template_name]["description"]
 )
+if "last_template" not in st.session_state:
+    st.session_state.last_template = template_name
+
+if template_name != st.session_state.last_template:
+
+    selected_template = WORKFLOW_TEMPLATES[template_name]
+
+    st.session_state.stages = [
+        {
+            "id": str(uuid.uuid4()),
+            "name": stage["name"],
+            "purpose": stage["purpose"],
+            "instruction": stage["instruction"],
+        }
+        for stage in selected_template["stages"]
+    ]
+
+    st.session_state.workflow_description = (
+        selected_template["description"]
+    )
+
+    st.session_state.last_template = template_name
+
+    clear_results()
+
+    st.rerun()
 # ============================================================
 # WORKFLOW BUILDER
 # ============================================================
