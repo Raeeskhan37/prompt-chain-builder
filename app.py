@@ -610,11 +610,23 @@ with metric3:
         status_text,
     )
 
+# -----------------------------
+# Workflow Template
+# -----------------------------
 
+st.markdown("## 🧰 Workflow Template")
+
+template_name = st.selectbox(
+    "Choose a workflow template",
+    list(WORKFLOW_TEMPLATES.keys()),
+)
+
+st.caption(
+    WORKFLOW_TEMPLATES[template_name]["description"]
+)
 # ============================================================
 # WORKFLOW BUILDER
 # ============================================================
-
 st.markdown("## 🧩 Workflow Builder")
 
 st.caption(
