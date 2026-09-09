@@ -642,19 +642,19 @@ if template_name != st.session_state.last_template:
     ]
 
     st.session_state.workflow_description = (
-    selected_template["description"]
-)
+        selected_template["description"]
+    )
 
-if template_name == "Custom Workflow":
-    st.session_state.workflow_name = "My AI Workflow"
-else:
-    st.session_state.workflow_name = template_name
+    if template_name == "Custom Workflow":
+        st.session_state.workflow_name = "My AI Workflow"
+    else:
+        st.session_state.workflow_name = template_name
 
-st.session_state.last_template = template_name
+    st.session_state.last_template = template_name
 
-clear_results()
+    clear_results()
 
-st.rerun()
+    st.rerun()
 # ============================================================
 # WORKFLOW BUILDER
 # ============================================================
