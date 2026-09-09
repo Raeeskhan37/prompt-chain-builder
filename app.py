@@ -479,6 +479,16 @@ with metric2:
 with metric3:
     if st.session_state.run_completed:
         status_text = "Completed"
+    elif any(
+        status == "running"
+        for status in st.session_state.stage_status
+    ):
+        status_text = "Running"
+    elif any(
+        status == "failed"
+        for status in st.session_state.stage_status
+    ):
+        status_text = "Failed"
     else:
         status_text = "Ready"
 
