@@ -198,15 +198,21 @@ WORKFLOW_TEMPLATES = {
                     "and make the response clearer and more practical."
                 ),
             },
-            {
-                "name": "Quality Check",
-                "purpose": "Check the response for errors and missing requirements.",
-                "instruction": (
-                    "Perform a quality check of the previous result. "
-                    "Look for factual problems, missing requirements, "
-                    "logical issues, unclear wording, and inconsistencies."
-                ),
-            },
+                {
+    "name": "Quality Check",
+    "purpose": "Verify accuracy, completeness and consistency before the final answer.",
+    "instruction": (
+        "Perform a rigorous quality check of the previous result. "
+        "Verify factual claims, dates, days of the week, numbers, names, "
+        "calculations, logical consistency, missing requirements and "
+        "unsupported assumptions. Pay special attention to information "
+        "that could be objectively verified. If an error is found, "
+        "provide the corrected information and explain what must be changed. "
+        "Do not merely say that the result looks good. "
+        "Return a clear corrected version or precise corrections that the "
+        "Final Answer stage can directly use."
+    ),
+},
             {
                 "name": "Final Answer",
                 "purpose": "Produce the final response for the user.",
@@ -239,22 +245,31 @@ WORKFLOW_TEMPLATES = {
                 ),
             },
             {
-                "name": "Review",
-                "purpose": "Improve professionalism and clarity.",
-                "instruction": (
-                    "Review the email for grammar, clarity, tone, "
-                    "completeness and professionalism. "
-                    "Improve it where necessary."
-                ),
-            },
+    "name": "Review",
+    "purpose": "Verify the email for accuracy, clarity and professionalism.",
+    "instruction": (
+        "Perform a rigorous review of the drafted email. Check grammar, "
+        "clarity, tone, completeness and professionalism. Also verify all "
+        "dates, days of the week, numbers, names, times and factual details. "
+        "Identify and correct contradictions, incorrect assumptions or "
+        "unsupported details. Do not invent information that the user did "
+        "not provide. If information is missing, use an appropriate "
+        "placeholder or neutral wording. Return the corrected email and "
+        "make sure the Final Email stage can use it directly."
+    ),
+},
             {
-                "name": "Final Email",
-                "purpose": "Produce the final ready-to-send email.",
-                "instruction": (
-                    "Return the polished final email ready for the "
-                    "user to copy and send."
-                ),
-            },
+    "name": "Final Email",
+    "purpose": "Produce the accurate, polished and ready-to-send email.",
+    "instruction": (
+        "Create the final ready-to-send email using the reviewed result. "
+        "Apply all corrections identified during the review. Do not "
+        "reintroduce errors from the original draft. Preserve facts "
+        "provided by the user, but do not invent missing personal details. "
+        "Use placeholders such as [Boss's Name] or [Your Name] when "
+        "necessary. Return only the final polished email."
+    ),
+},
         ],
     },
 
