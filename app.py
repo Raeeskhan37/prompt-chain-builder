@@ -874,7 +874,7 @@ Now perform the current stage.
             status_placeholder.success(
                 "✅ Workflow completed successfully."
             )
-            else:
+        else:
 
             progress_bar.empty()
 
