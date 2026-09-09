@@ -874,14 +874,17 @@ Now perform the current stage.
             status_placeholder.success(
                 "✅ Workflow completed successfully."
             )
-
-        else:
+                else:
 
             progress_bar.empty()
 
             status_placeholder.error(
                 "❌ Workflow stopped because a stage failed."
             )
+
+        # Refresh the dashboard so Workflow Overview
+        # shows the updated execution status.
+        st.rerun()
 
 
 # ============================================================
