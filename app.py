@@ -1226,7 +1226,7 @@ try:
                 )
 
 
-    except Exception as error:
+except Exception as error:
 
                 st.session_state.stage_status[
                     index
