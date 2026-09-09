@@ -31,7 +31,7 @@ st.markdown(
 
     .block-container {
         max-width: 1400px;
-        padding-top: 2rem;
+        padding-top: 1.5rem;
         padding-bottom: 3rem;
     }
 
@@ -47,26 +47,65 @@ st.markdown(
         margin-bottom: 1.5rem;
     }
 
-    .metric-box {
-        padding: 1rem;
+    .execution-box {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 1.2rem;
+        background-color: #f8fafc;
+        margin-top: 0.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .step-row {
+        padding: 0.65rem 0.8rem;
+        border-radius: 10px;
+        margin-bottom: 0.35rem;
+        font-size: 0.95rem;
+    }
+
+    .step-completed {
+        background-color: #f0fdf4;
+    }
+
+    .step-running {
+        background-color: #eff6ff;
+    }
+
+    .step-waiting {
+        background-color: #f9fafb;
+    }
+
+    .step-failed {
+        background-color: #fef2f2;
+    }
+
+    .step-title {
+        font-weight: 600;
+    }
+
+    .execution-message {
+        margin-top: 0.8rem;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .workflow-card {
         border: 1px solid #e5e7eb;
         border-radius: 12px;
-        background-color: #f8fafc;
-        text-align: center;
+        padding: 0.9rem 1rem;
+        margin-bottom: 0.5rem;
+        background-color: #ffffff;
     }
 
-    .section-title {
-        font-size: 1.4rem;
+    .workflow-card-title {
         font-weight: 650;
-        margin-top: 1rem;
-        margin-bottom: 0.8rem;
+        font-size: 1rem;
     }
 
-    .stage-status {
-        padding: 0.35rem 0.7rem;
-        border-radius: 20px;
+    .workflow-card-purpose {
+        color: #6b7280;
         font-size: 0.85rem;
-        font-weight: 600;
+        margin-top: 0.2rem;
     }
 
     .footer {
@@ -451,6 +490,9 @@ if "run_completed" not in st.session_state:
 if "last_template" not in st.session_state:
     st.session_state.last_template = "Custom Workflow"
 
+if "workflow_running" not in st.session_state:
+    st.session_state.workflow_running = False
+
 
 # =========================================================
 # HELPER FUNCTIONS
@@ -458,6 +500,7 @@ if "last_template" not in st.session_state:
 
 def limit_context(text, max_chars=MAX_CONTEXT_CHARS):
     """Limit the amount of previous-stage text passed to the next stage."""
+
     if not text:
         return ""
 
@@ -473,7 +516,9 @@ def call_groq(system_prompt, user_prompt, retries=3):
     last_error = None
 
     for attempt in range(retries):
+
         try:
+
             response = client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[
@@ -493,11 +538,15 @@ def call_groq(system_prompt, user_prompt, retries=3):
             return response.choices[0].message.content
 
         except Exception as error:
+
             last_error = error
 
             if attempt < retries - 1:
+
                 time.sleep(2 * (attempt + 1))
+
             else:
+
                 raise last_error
 
 
@@ -539,6 +588,7 @@ def reset_workflow():
     ]
 
     st.session_state.last_template = "Custom Workflow"
+    st.session_state.workflow_running = False
 
     clear_results()
 
@@ -579,7 +629,11 @@ def delete_stage(index):
     """Delete a stage while keeping at least two stages."""
 
     if len(st.session_state.stages) <= 2:
-        st.warning("A workflow must contain at least 2 stages.")
+
+        st.warning(
+            "A workflow must contain at least 2 stages."
+        )
+
         return
 
     del st.session_state.stages[index]
@@ -593,7 +647,9 @@ def add_stage():
     stage_number = len(st.session_state.stages) + 1
 
     st.session_state.stages.append(
-        create_stage(f"Stage {stage_number}")
+        create_stage(
+            f"Stage {stage_number}"
+        )
     )
 
     clear_results()
@@ -602,7 +658,9 @@ def add_stage():
 def load_template(template_name):
     """Load a selected workflow template."""
 
-    selected_template = WORKFLOW_TEMPLATES[template_name]
+    selected_template = WORKFLOW_TEMPLATES[
+        template_name
+    ]
 
     st.session_state.stages = [
         {
@@ -619,13 +677,150 @@ def load_template(template_name):
     )
 
     if template_name == "Custom Workflow":
-        st.session_state.workflow_name = "My AI Workflow"
+
+        st.session_state.workflow_name = (
+            "My AI Workflow"
+        )
+
     else:
-        st.session_state.workflow_name = template_name
+
+        st.session_state.workflow_name = (
+            template_name
+        )
 
     st.session_state.last_template = template_name
 
     clear_results()
+
+
+def render_execution_status(container):
+    """
+    Render a compact execution tracker.
+    Intermediate AI outputs are deliberately hidden.
+    """
+
+    with container:
+
+        st.markdown("### 🔄 Workflow Execution")
+
+        total = len(st.session_state.stages)
+
+        completed = sum(
+            1
+            for status in st.session_state.stage_status
+            if status == "completed"
+        )
+
+        current_stage = None
+
+        for index, status in enumerate(
+            st.session_state.stage_status
+        ):
+
+            if status == "running":
+
+                current_stage = index
+                break
+
+        if current_stage is not None:
+
+            progress_value = (
+                completed / total
+                if total > 0
+                else 0
+            )
+
+        else:
+
+            progress_value = (
+                completed / total
+                if total > 0
+                else 0
+            )
+
+        st.progress(
+            progress_value
+        )
+
+        for index, stage in enumerate(
+            st.session_state.stages
+        ):
+
+            status = (
+                st.session_state.stage_status[index]
+                if index < len(
+                    st.session_state.stage_status
+                )
+                else "pending"
+            )
+
+            step_number = index + 1
+
+            if status == "completed":
+
+                icon = "✅"
+                state_text = "Completed"
+                css_class = "step-completed"
+
+            elif status == "running":
+
+                icon = "🔄"
+                state_text = "Running"
+                css_class = "step-running"
+
+            elif status == "failed":
+
+                icon = "❌"
+                state_text = "Failed"
+                css_class = "step-failed"
+
+            else:
+
+                icon = "⏳"
+                state_text = "Waiting"
+                css_class = "step-waiting"
+
+            st.markdown(
+                f"""
+                <div class="step-row {css_class}">
+                    {icon}
+                    <span class="step-title">
+                        Step {step_number}/{total}
+                    </span>
+                    — {stage['name']}
+                    <span style="float:right;">
+                        {state_text}
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        if st.session_state.workflow_running:
+
+            if current_stage is not None:
+
+                current_name = (
+                    st.session_state.stages[
+                        current_stage
+                    ]["name"]
+                )
+
+                st.markdown(
+                    f"""
+                    <div class="execution-message">
+                        Processing:
+                        <strong>{current_name}</strong>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        elif st.session_state.run_completed:
+
+            st.success(
+                f"🎉 All {total} stages completed successfully."
+            )
 
 
 # =========================================================
@@ -634,15 +829,18 @@ def load_template(template_name):
 
 with st.sidebar:
 
-    st.markdown("## 🔗 AI Prompt Chain Builder")
+    st.markdown(
+        "## 🔗 AI Prompt Chain Builder"
+    )
 
     st.markdown("---")
 
     st.markdown("### Workflow")
 
     st.write(
-        "Create a workflow by connecting multiple AI stages. "
-        "Each stage receives the output of the previous stage."
+        "Create a workflow by connecting multiple "
+        "AI stages. Each stage receives the output "
+        "of the previous stage."
     )
 
     st.markdown("### How It Works")
@@ -670,8 +868,13 @@ with st.sidebar:
 
     st.markdown("### 🤖 AI Configuration")
 
-    st.caption(f"Model: `{MODEL_NAME}`")
-    st.caption(f"Maximum output tokens: `{MAX_OUTPUT_TOKENS}`")
+    st.caption(
+        f"Model: `{MODEL_NAME}`"
+    )
+
+    st.caption(
+        f"Maximum output tokens: `{MAX_OUTPUT_TOKENS}`"
+    )
 
     st.markdown("---")
 
@@ -679,7 +882,9 @@ with st.sidebar:
         "🔄 Reset Workflow",
         use_container_width=True,
     ):
+
         reset_workflow()
+
         st.rerun()
 
 
@@ -687,7 +892,9 @@ with st.sidebar:
 # HEADER
 # =========================================================
 
-st.markdown("# 🔗 AI Prompt Chain Builder")
+st.markdown(
+    "# 🔗 AI Prompt Chain Builder"
+)
 
 st.markdown(
     "Build, customize and execute multi-stage AI workflows."
@@ -700,25 +907,39 @@ st.divider()
 # WORKFLOW TEMPLATE
 # =========================================================
 
-st.markdown("## 🧰 Workflow Template")
+st.markdown(
+    "## 🧰 Workflow Template"
+)
 
-template_options = list(WORKFLOW_TEMPLATES.keys())
+template_options = list(
+    WORKFLOW_TEMPLATES.keys()
+)
 
 template_name = st.selectbox(
     "Choose a workflow template",
     template_options,
     index=(
-        template_options.index(st.session_state.last_template)
-        if st.session_state.last_template in template_options
+        template_options.index(
+            st.session_state.last_template
+        )
+        if st.session_state.last_template
+        in template_options
         else 0
     ),
+    disabled=st.session_state.workflow_running,
 )
 
 st.caption(
-    WORKFLOW_TEMPLATES[template_name]["description"]
+    WORKFLOW_TEMPLATES[
+        template_name
+    ]["description"]
 )
 
-if template_name != st.session_state.last_template:
+if (
+    template_name
+    != st.session_state.last_template
+    and not st.session_state.workflow_running
+):
 
     load_template(template_name)
 
@@ -729,24 +950,37 @@ if template_name != st.session_state.last_template:
 # OUTPUT INTENT
 # =========================================================
 
-st.markdown("## 🎯 Output Intent")
+st.markdown(
+    "## 🎯 Output Intent"
+)
 
 output_intent = st.selectbox(
     "How should the workflow answer?",
     list(OUTPUT_INTENTS.keys()),
-    index=list(OUTPUT_INTENTS.keys()).index(
+    index=list(
+        OUTPUT_INTENTS.keys()
+    ).index(
         st.session_state.output_intent
     ),
+    disabled=st.session_state.workflow_running,
 )
 
-if output_intent != st.session_state.output_intent:
+if (
+    output_intent
+    != st.session_state.output_intent
+    and not st.session_state.workflow_running
+):
 
-    st.session_state.output_intent = output_intent
+    st.session_state.output_intent = (
+        output_intent
+    )
 
     clear_results()
 
 st.caption(
-    OUTPUT_INTENTS[output_intent]["description"]
+    OUTPUT_INTENTS[
+        output_intent
+    ]["description"]
 )
 
 
@@ -754,7 +988,9 @@ st.caption(
 # WORKFLOW INFORMATION
 # =========================================================
 
-st.markdown("## ⚙️ Workflow Information")
+st.markdown(
+    "## ⚙️ Workflow Information"
+)
 
 col1, col2 = st.columns(2)
 
@@ -763,11 +999,18 @@ with col1:
     workflow_name = st.text_input(
         "Workflow Name",
         value=st.session_state.workflow_name,
+        disabled=st.session_state.workflow_running,
     )
 
-    if workflow_name != st.session_state.workflow_name:
+    if (
+        workflow_name
+        != st.session_state.workflow_name
+        and not st.session_state.workflow_running
+    ):
 
-        st.session_state.workflow_name = workflow_name
+        st.session_state.workflow_name = (
+            workflow_name
+        )
 
         clear_results()
 
@@ -777,11 +1020,18 @@ with col2:
     workflow_description = st.text_input(
         "Workflow Description",
         value=st.session_state.workflow_description,
+        disabled=st.session_state.workflow_running,
     )
 
-    if workflow_description != st.session_state.workflow_description:
+    if (
+        workflow_description
+        != st.session_state.workflow_description
+        and not st.session_state.workflow_running
+    ):
 
-        st.session_state.workflow_description = workflow_description
+        st.session_state.workflow_description = (
+            workflow_description
+        )
 
         clear_results()
 
@@ -802,10 +1052,7 @@ if st.session_state.run_completed:
 
     workflow_status = "Completed"
 
-elif any(
-    status == "running"
-    for status in st.session_state.stage_status
-):
+elif st.session_state.workflow_running:
 
     workflow_status = "Running"
 
@@ -824,18 +1071,21 @@ else:
 metric1, metric2, metric3 = st.columns(3)
 
 with metric1:
+
     st.metric(
         "Stages",
         len(stages),
     )
 
 with metric2:
+
     st.metric(
         "Completed",
         completed_count,
     )
 
 with metric3:
+
     st.metric(
         "Status",
         workflow_status,
@@ -843,199 +1093,202 @@ with metric3:
 
 
 # =========================================================
-# WORKFLOW BUILDER
+# COMPACT WORKFLOW CONFIGURATION
 # =========================================================
 
-st.markdown("## 🧩 Workflow Builder")
-
-for index, stage in enumerate(st.session_state.stages):
-
-    stage_number = index + 1
-
-    if index < len(st.session_state.stage_status):
-
-        current_status = st.session_state.stage_status[index]
-
-    else:
-
-        current_status = "pending"
-
-
-    if current_status == "completed":
-
-        status_icon = "✅"
-
-    elif current_status == "running":
-
-        status_icon = "🔄"
-
-    elif current_status == "failed":
-
-        status_icon = "❌"
-
-    else:
-
-        status_icon = "⏳"
-
-
-    st.markdown(
-        f"### {status_icon} Stage {stage_number}: {stage['name']}"
-    )
+with st.expander(
+    f"🧩 Configure Workflow Stages "
+    f"({len(stages)} stages)",
+    expanded=False,
+):
 
     st.caption(
-        f"Purpose: {stage['purpose']}"
+        "Customize the stages below. "
+        "The stages execute sequentially, but their "
+        "internal outputs remain hidden during execution."
     )
 
-    control1, control2, control3 = st.columns(
-        [1, 1, 1]
-    )
-
-    with control1:
-
-        if st.button(
-            "⬆️ Move Up",
-            key=f"up_{stage['id']}",
-            disabled=(index == 0),
-            use_container_width=True,
-        ):
-
-            move_stage_up(index)
-
-            st.rerun()
-
-
-    with control2:
-
-        if st.button(
-            "⬇️ Move Down",
-            key=f"down_{stage['id']}",
-            disabled=(index == len(stages) - 1),
-            use_container_width=True,
-        ):
-
-            move_stage_down(index)
-
-            st.rerun()
-
-
-    with control3:
-
-        if st.button(
-            "🗑️ Delete",
-            key=f"delete_{stage['id']}",
-            use_container_width=True,
-        ):
-
-            delete_stage(index)
-
-            st.rerun()
-
-
-    with st.expander(
-        f"✏️ Edit Stage {stage_number}",
-        expanded=False,
+    for index, stage in enumerate(
+        st.session_state.stages
     ):
 
-        new_name = st.text_input(
-            "Stage Name",
-            value=stage["name"],
-            key=f"name_{stage['id']}",
+        stage_number = index + 1
+
+        st.markdown(
+            f"""
+            <div class="workflow-card">
+                <div class="workflow-card-title">
+                    {stage_number}. {stage['name']}
+                </div>
+                <div class="workflow-card-purpose">
+                    {stage['purpose']}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        new_purpose = st.text_area(
-            "Stage Purpose",
-            value=stage["purpose"],
-            key=f"purpose_{stage['id']}",
-            height=90,
-        )
+        if not st.session_state.workflow_running:
 
-        new_instruction = st.text_area(
-            "AI Instruction",
-            value=stage["instruction"],
-            key=f"instruction_{stage['id']}",
-            height=160,
-        )
-
-        if (
-            new_name != stage["name"]
-            or new_purpose != stage["purpose"]
-            or new_instruction != stage["instruction"]
-        ):
-
-            stage["name"] = new_name
-            stage["purpose"] = new_purpose
-            stage["instruction"] = new_instruction
-
-            clear_results()
-
-    if (
-        index < len(st.session_state.stage_outputs)
-        and st.session_state.stage_outputs[index]
-    ):
-
-        with st.expander(
-            f"📄 Stage {stage_number} Output",
-            expanded=False,
-        ):
-
-            st.write(
-                st.session_state.stage_outputs[index]
+            control1, control2, control3 = st.columns(
+                3
             )
 
-    st.divider()
+            with control1:
 
+                if st.button(
+                    "⬆️ Move Up",
+                    key=f"up_{stage['id']}",
+                    disabled=(index == 0),
+                    use_container_width=True,
+                ):
 
-# =========================================================
-# ADD STAGE
-# =========================================================
+                    move_stage_up(index)
 
-if len(st.session_state.stages) < 5:
+                    st.rerun()
 
-    if st.button(
-        "➕ Add Stage",
-        use_container_width=True,
-    ):
+            with control2:
 
-        add_stage()
+                if st.button(
+                    "⬇️ Move Down",
+                    key=f"down_{stage['id']}",
+                    disabled=(
+                        index
+                        == len(stages) - 1
+                    ),
+                    use_container_width=True,
+                ):
 
-        st.rerun()
+                    move_stage_down(index)
 
-else:
+                    st.rerun()
 
-    st.info(
-        "Maximum of 5 stages allowed in the current workflow."
-    )
+            with control3:
+
+                if st.button(
+                    "🗑️ Delete",
+                    key=f"delete_{stage['id']}",
+                    use_container_width=True,
+                ):
+
+                    delete_stage(index)
+
+                    st.rerun()
+
+            with st.expander(
+                f"✏️ Edit Stage {stage_number}",
+                expanded=False,
+            ):
+
+                new_name = st.text_input(
+                    "Stage Name",
+                    value=stage["name"],
+                    key=f"name_{stage['id']}",
+                )
+
+                new_purpose = st.text_area(
+                    "Stage Purpose",
+                    value=stage["purpose"],
+                    key=f"purpose_{stage['id']}",
+                    height=80,
+                )
+
+                new_instruction = st.text_area(
+                    "AI Instruction",
+                    value=stage["instruction"],
+                    key=f"instruction_{stage['id']}",
+                    height=140,
+                )
+
+                if (
+                    new_name != stage["name"]
+                    or new_purpose != stage["purpose"]
+                    or new_instruction
+                    != stage["instruction"]
+                ):
+
+                    stage["name"] = new_name
+                    stage["purpose"] = new_purpose
+                    stage["instruction"] = (
+                        new_instruction
+                    )
+
+                    clear_results()
+
+    if not st.session_state.workflow_running:
+
+        if len(st.session_state.stages) < 5:
+
+            if st.button(
+                "➕ Add Stage",
+                use_container_width=True,
+            ):
+
+                add_stage()
+
+                st.rerun()
+
+        else:
+
+            st.info(
+                "Maximum of 5 stages allowed."
+            )
 
 
 # =========================================================
 # USER REQUEST
 # =========================================================
 
-st.markdown("## 📝 User Request")
+st.markdown(
+    "## 📝 User Request"
+)
 
 user_prompt = st.text_area(
     "What would you like the workflow to process?",
     value=st.session_state.last_prompt,
-    height=180,
+    height=150,
     placeholder=(
         "Example: Create a professional report about "
         "the impact of artificial intelligence on education."
     ),
     key="user_prompt_input",
+    disabled=st.session_state.workflow_running,
 )
 
 
 # =========================================================
-# RUN WORKFLOW
+# EXECUTION AREA
 # =========================================================
 
-st.markdown("## ▶️ Execute Workflow")
+execution_container = st.container()
 
-if st.button(
-    "🚀 Run Workflow",
-    type="primary",
-    use_container_width=True,
-):
+
+# =========================================================
+# RUN WORKFLOW BUTTON
+# =========================================================
+
+if not st.session_state.workflow_running:
+
+    st.markdown(
+        "## ▶️ Execute Workflow"
+    )
+
+    run_clicked = st.button(
+        "🚀 Run Workflow",
+        type="primary",
+        use_container_width=True,
+    )
+
+else:
+
+    run_clicked = False
+
+
+# =========================================================
+# START WORKFLOW
+# =========================================================
+
+if run_clicked:
 
     if not user_prompt.strip():
 
@@ -1052,7 +1305,7 @@ if st.button(
     else:
 
         # -------------------------------------------------
-        # INITIALIZE EXECUTION STATE
+        # INITIALIZE WORKFLOW
         # -------------------------------------------------
 
         st.session_state.last_prompt = user_prompt
@@ -1075,12 +1328,24 @@ if st.button(
 
         st.session_state.run_completed = False
 
-        progress_bar = st.progress(
+        st.session_state.workflow_running = True
+
+        # -------------------------------------------------
+        # INITIAL EXECUTION DISPLAY
+        # -------------------------------------------------
+
+        render_execution_status(
+            execution_container
+        )
+
+        progress_bar = execution_container.progress(
             0,
             text="Starting workflow...",
         )
 
-        status_placeholder = st.empty()
+        status_placeholder = (
+            execution_container.empty()
+        )
 
         workflow_failed = False
 
@@ -1090,7 +1355,7 @@ if st.button(
 
 
         # -------------------------------------------------
-        # EXECUTE EACH STAGE
+        # EXECUTE STAGES SEQUENTIALLY
         # -------------------------------------------------
 
         for index, stage in enumerate(
@@ -1099,30 +1364,43 @@ if st.button(
 
             stage_number = index + 1
 
-            st.session_state.stage_status[index] = "running"
+            # ---------------------------------------------
+            # MARK CURRENT STAGE AS RUNNING
+            # ---------------------------------------------
+
+            st.session_state.stage_status[index] = (
+                "running"
+            )
 
             status_placeholder.info(
-                f"Running Stage {stage_number} of "
-                f"{total_stages}: {stage['name']}"
+                f"🔄 Processing Step "
+                f"{stage_number}/{total_stages}: "
+                f"{stage['name']}"
             )
 
 
-            # -------------------------------------------------
-            # STEP 6: PASS PREVIOUS STAGE OUTPUT
-            # -------------------------------------------------
+            # ---------------------------------------------
+            # PREVIOUS STAGE OUTPUT
+            # ---------------------------------------------
 
             previous_output = ""
 
             if index > 0:
 
                 previous_output = (
-                    st.session_state.stage_outputs[index - 1]
+                    st.session_state.stage_outputs[
+                        index - 1
+                    ]
                 )
 
                 previous_output = limit_context(
                     previous_output
                 )
 
+
+            # ---------------------------------------------
+            # CURRENT STAGE INPUT
+            # ---------------------------------------------
 
             stage_input = f"""
 Original User Request:
@@ -1150,9 +1428,9 @@ and the selected Output Intent.
 """
 
 
-            # -------------------------------------------------
+            # ---------------------------------------------
             # SYSTEM PROMPT
-            # -------------------------------------------------
+            # ---------------------------------------------
 
             system_prompt = f"""
 You are Stage {stage_number} of a multi-stage AI workflow.
@@ -1200,9 +1478,9 @@ Produce useful output that the next stage can directly use.
 """
 
 
-            # -------------------------------------------------
+            # ---------------------------------------------
             # CALL AI
-            # -------------------------------------------------
+            # ---------------------------------------------
 
             try:
 
@@ -1212,17 +1490,28 @@ Produce useful output that the next stage can directly use.
                 )
 
                 if not output:
+
                     raise ValueError(
                         "The AI returned an empty response."
                     )
 
 
-                st.session_state.stage_outputs[index] = output
+                # -----------------------------------------
+                # SAVE OUTPUT
+                # -----------------------------------------
 
-                st.session_state.stage_status[index] = (
-                    "completed"
-                )
+                st.session_state.stage_outputs[
+                    index
+                ] = output
 
+                st.session_state.stage_status[
+                    index
+                ] = "completed"
+
+
+                # -----------------------------------------
+                # UPDATE PROGRESS
+                # -----------------------------------------
 
                 progress = (
                     stage_number / total_stages
@@ -1231,22 +1520,117 @@ Produce useful output that the next stage can directly use.
                 progress_bar.progress(
                     progress,
                     text=(
-                        f"Completed Stage {stage_number} "
-                        f"of {total_stages}"
+                        f"Step {stage_number}/"
+                        f"{total_stages} completed"
                     ),
                 )
 
 
+                # -----------------------------------------
+                # UPDATE COMPACT STATUS
+                # -----------------------------------------
+
+                with execution_container:
+
+                    completed = sum(
+                        1
+                        for status
+                        in st.session_state.stage_status
+                        if status == "completed"
+                    )
+
+                    current_running = None
+
+                    for status_index, status in enumerate(
+                        st.session_state.stage_status
+                    ):
+
+                        if status == "running":
+
+                            current_running = (
+                                status_index
+                            )
+
+                            break
+
+                    for status_index, current_status in enumerate(
+                        st.session_state.stage_status
+                    ):
+
+                        if current_status == "completed":
+
+                            icon = "✅"
+                            state_text = "Completed"
+
+                        elif current_status == "running":
+
+                            icon = "🔄"
+                            state_text = "Running"
+
+                        elif current_status == "failed":
+
+                            icon = "❌"
+                            state_text = "Failed"
+
+                        else:
+
+                            icon = "⏳"
+                            state_text = "Waiting"
+
+                        step_name = (
+                            st.session_state.stages[
+                                status_index
+                            ]["name"]
+                        )
+
+                        st.markdown(
+                            f"""
+                            <div class="step-row {
+                                'step-completed'
+                                if current_status == 'completed'
+                                else
+                                'step-running'
+                                if current_status == 'running'
+                                else
+                                'step-failed'
+                                if current_status == 'failed'
+                                else
+                                'step-waiting'
+                            }">
+                                {icon}
+                                <span class="step-title">
+                                    Step {status_index + 1}/{total_stages}
+                                </span>
+                                — {step_name}
+                                <span style="float:right;">
+                                    {state_text}
+                                </span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                    if current_running is not None:
+
+                        st.caption(
+                            "Processing: "
+                            + st.session_state.stages[
+                                current_running
+                            ]["name"]
+                        )
+
+
             except Exception as error:
 
-                st.session_state.stage_status[index] = (
-                    "failed"
-                )
+                st.session_state.stage_status[
+                    index
+                ] = "failed"
 
                 workflow_failed = True
 
                 status_placeholder.error(
-                    f"Stage {stage_number} failed: {error}"
+                    f"❌ Step {stage_number}/{total_stages} "
+                    f"failed: {error}"
                 )
 
                 break
@@ -1264,16 +1648,21 @@ Produce useful output that the next stage can directly use.
 
             st.session_state.run_completed = True
 
+            st.session_state.workflow_running = False
+
             progress_bar.progress(
                 1.0,
-                text="Workflow completed successfully.",
+                text="All stages completed",
             )
 
             status_placeholder.success(
-                "All workflow stages completed successfully."
+                f"🎉 All {total_stages} stages "
+                f"completed successfully."
             )
 
         else:
+
+            st.session_state.workflow_running = False
 
             status_placeholder.error(
                 "Workflow stopped because a stage failed."
@@ -1281,7 +1670,7 @@ Produce useful output that the next stage can directly use.
 
 
         # -------------------------------------------------
-        # REFRESH PAGE
+        # REFRESH
         # -------------------------------------------------
 
         time.sleep(0.5)
@@ -1295,10 +1684,12 @@ Produce useful output that the next stage can directly use.
 
 if st.session_state.final_answer:
 
-    st.markdown("## 🎯 Final Answer")
+    st.markdown(
+        "## 🎯 Final Answer"
+    )
 
     st.success(
-        "Workflow completed successfully."
+        "Your workflow has completed successfully."
     )
 
     st.write(
@@ -1320,35 +1711,51 @@ if st.session_state.final_answer:
 
 if (
     st.session_state.stage_outputs
-    and any(st.session_state.stage_outputs)
+    and any(
+        st.session_state.stage_outputs
+    )
 ):
 
-    st.markdown("## 📊 Stage Results")
-
-    for index, output in enumerate(
-        st.session_state.stage_outputs
+    with st.expander(
+        "📊 View Internal Stage Results",
+        expanded=False,
     ):
 
-        if not output:
-            continue
+        st.caption(
+            "These are the intermediate results generated "
+            "by each workflow stage. They are kept hidden "
+            "during normal execution to keep the interface clean."
+        )
 
-        if index < len(st.session_state.stages):
-
-            stage_name = (
-                st.session_state.stages[index]["name"]
-            )
-
-        else:
-
-            stage_name = f"Stage {index + 1}"
-
-
-        with st.expander(
-            f"Stage {index + 1}: {stage_name}",
-            expanded=False,
+        for index, output in enumerate(
+            st.session_state.stage_outputs
         ):
 
-            st.write(output)
+            if not output:
+                continue
+
+            if index < len(
+                st.session_state.stages
+            ):
+
+                stage_name = (
+                    st.session_state.stages[
+                        index
+                    ]["name"]
+                )
+
+            else:
+
+                stage_name = (
+                    f"Stage {index + 1}"
+                )
+
+            with st.expander(
+                f"Step {index + 1}: {stage_name}",
+                expanded=False,
+            ):
+
+                st.write(output)
 
 
 # =========================================================
@@ -1357,7 +1764,9 @@ if (
 
 if st.session_state.run_completed:
 
-    st.markdown("## 📋 Workflow Summary")
+    st.markdown(
+        "## 📋 Workflow Summary"
+    )
 
     summary_col1, summary_col2 = st.columns(2)
 
@@ -1404,4 +1813,4 @@ st.markdown(
     </div>
     """,
     unsafe_allow_html=True,
-)
+    )
