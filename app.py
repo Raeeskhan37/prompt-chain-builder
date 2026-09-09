@@ -646,7 +646,7 @@ if template_name != st.session_state.last_template:
         selected_template["description"]
     )
 
-   if template_name == "Custom Workflow":
+if template_name == "Custom Workflow":
     new_workflow_name = "My AI Workflow"
 else:
     new_workflow_name = template_name
