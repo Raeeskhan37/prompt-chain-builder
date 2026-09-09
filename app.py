@@ -161,9 +161,11 @@ DEFAULT_STAGES = [
         ),
     },
 ]
-# -----------------------------
-# Workflow Templates
-# -----------------------------
+
+
+# ============================================================
+# WORKFLOW TEMPLATES
+# ============================================================
 
 WORKFLOW_TEMPLATES = {
     "Custom Workflow": {
@@ -172,27 +174,47 @@ WORKFLOW_TEMPLATES = {
             {
                 "name": "Analysis",
                 "purpose": "Understand and analyze the user's request.",
-                "instruction": "Analyze the user's request carefully. Identify the objective, important requirements, constraints, assumptions, and expected output.",
+                "instruction": (
+                    "Analyze the user's request carefully. "
+                    "Identify the objective, important requirements, "
+                    "constraints, assumptions, and expected output."
+                ),
             },
             {
                 "name": "Development",
                 "purpose": "Develop the main solution.",
-                "instruction": "Using the analysis from the previous stage, develop a useful and accurate solution. Include all important details required by the user.",
+                "instruction": (
+                    "Using the analysis from the previous stage, "
+                    "develop a useful and accurate solution. "
+                    "Include all important details required by the user."
+                ),
             },
             {
                 "name": "Refinement",
                 "purpose": "Improve clarity, completeness and usefulness.",
-                "instruction": "Review the previous solution and improve it. Remove unnecessary content, correct weaknesses, and make the response clearer and more practical.",
+                "instruction": (
+                    "Review the previous solution and improve it. "
+                    "Remove unnecessary content, correct weaknesses, "
+                    "and make the response clearer and more practical."
+                ),
             },
             {
                 "name": "Quality Check",
                 "purpose": "Check the response for errors and missing requirements.",
-                "instruction": "Perform a quality check of the previous result. Look for factual problems, missing requirements, logical issues, unclear wording, and inconsistencies.",
+                "instruction": (
+                    "Perform a quality check of the previous result. "
+                    "Look for factual problems, missing requirements, "
+                    "logical issues, unclear wording, and inconsistencies."
+                ),
             },
             {
                 "name": "Final Answer",
                 "purpose": "Produce the final response for the user.",
-                "instruction": "Create the final answer using the improved and quality-checked result. Answer the user's request directly and clearly.",
+                "instruction": (
+                    "Create the final answer using the improved and "
+                    "quality-checked result. Answer the user's request "
+                    "directly and clearly."
+                ),
             },
         ],
     },
@@ -203,22 +225,35 @@ WORKFLOW_TEMPLATES = {
             {
                 "name": "Understand Request",
                 "purpose": "Understand the purpose, recipient and required tone.",
-                "instruction": "Identify the purpose of the email, recipient, important facts, desired tone and required action.",
+                "instruction": (
+                    "Identify the purpose of the email, recipient, "
+                    "important facts, desired tone and required action."
+                ),
             },
             {
                 "name": "Draft Email",
                 "purpose": "Create the main email.",
-                "instruction": "Write a professional, clear and concise email using the information provided.",
+                "instruction": (
+                    "Write a professional, clear and concise email "
+                    "using the information provided."
+                ),
             },
             {
                 "name": "Review",
                 "purpose": "Improve professionalism and clarity.",
-                "instruction": "Review the email for grammar, clarity, tone, completeness and professionalism. Improve it where necessary.",
+                "instruction": (
+                    "Review the email for grammar, clarity, tone, "
+                    "completeness and professionalism. "
+                    "Improve it where necessary."
+                ),
             },
             {
                 "name": "Final Email",
                 "purpose": "Produce the final ready-to-send email.",
-                "instruction": "Return the polished final email ready for the user to copy and send.",
+                "instruction": (
+                    "Return the polished final email ready for the "
+                    "user to copy and send."
+                ),
             },
         ],
     },
@@ -229,22 +264,36 @@ WORKFLOW_TEMPLATES = {
             {
                 "name": "Content Analysis",
                 "purpose": "Understand the topic and audience.",
-                "instruction": "Analyze the requested topic, target audience, purpose, tone and important points that should be covered.",
+                "instruction": (
+                    "Analyze the requested topic, target audience, "
+                    "purpose, tone and important points that should "
+                    "be covered."
+                ),
             },
             {
                 "name": "Content Creation",
                 "purpose": "Write the main content.",
-                "instruction": "Create useful, engaging and well-structured content based on the analysis.",
+                "instruction": (
+                    "Create useful, engaging and well-structured "
+                    "content based on the analysis."
+                ),
             },
             {
                 "name": "Content Review",
                 "purpose": "Improve quality and readability.",
-                "instruction": "Review the content for accuracy, structure, readability, completeness and engagement. Improve weak areas.",
+                "instruction": (
+                    "Review the content for accuracy, structure, "
+                    "readability, completeness and engagement. "
+                    "Improve weak areas."
+                ),
             },
             {
                 "name": "Final Content",
                 "purpose": "Produce polished final content.",
-                "instruction": "Produce the final polished content with appropriate headings, structure and formatting.",
+                "instruction": (
+                    "Produce the final polished content with "
+                    "appropriate headings, structure and formatting."
+                ),
             },
         ],
     },
@@ -255,26 +304,42 @@ WORKFLOW_TEMPLATES = {
             {
                 "name": "Understand Topic",
                 "purpose": "Identify the learner's needs.",
-                "instruction": "Understand the topic, learner level, learning objective and important concepts that need to be explained.",
+                "instruction": (
+                    "Understand the topic, learner level, learning "
+                    "objective and important concepts that need "
+                    "to be explained."
+                ),
             },
             {
                 "name": "Explain",
                 "purpose": "Create a clear explanation.",
-                "instruction": "Explain the topic in simple language appropriate for the learner. Use examples and analogies where helpful.",
+                "instruction": (
+                    "Explain the topic in simple language appropriate "
+                    "for the learner. Use examples and analogies "
+                    "where helpful."
+                ),
             },
             {
                 "name": "Learning Review",
                 "purpose": "Check understanding and completeness.",
-                "instruction": "Review the explanation for accuracy, clarity and completeness. Identify anything important that is missing.",
+                "instruction": (
+                    "Review the explanation for accuracy, clarity "
+                    "and completeness. Identify anything important "
+                    "that is missing."
+                ),
             },
             {
                 "name": "Final Lesson",
                 "purpose": "Produce useful learning material.",
-                "instruction": "Create the final learner-friendly explanation with examples, key points and a concise summary.",
+                "instruction": (
+                    "Create the final learner-friendly explanation "
+                    "with examples, key points and a concise summary."
+                ),
             },
         ],
     },
 }
+
 
 # ============================================================
 # SESSION STATE
@@ -313,6 +378,9 @@ if "last_prompt" not in st.session_state:
 
 if "run_completed" not in st.session_state:
     st.session_state.run_completed = False
+
+if "last_template" not in st.session_state:
+    st.session_state.last_template = "Custom Workflow"
 
 
 # ============================================================
@@ -396,6 +464,8 @@ def reset_workflow():
         for stage in DEFAULT_STAGES
     ]
 
+    st.session_state.last_template = "Custom Workflow"
+
     clear_results()
 
 
@@ -449,6 +519,33 @@ def add_stage():
     clear_results()
 
 
+def load_template(template_name):
+    selected_template = WORKFLOW_TEMPLATES[template_name]
+
+    st.session_state.stages = [
+        {
+            "id": str(uuid.uuid4()),
+            "name": stage["name"],
+            "purpose": stage["purpose"],
+            "instruction": stage["instruction"],
+        }
+        for stage in selected_template["stages"]
+    ]
+
+    st.session_state.workflow_description = (
+        selected_template["description"]
+    )
+
+    if template_name == "Custom Workflow":
+        st.session_state.workflow_name = "My AI Workflow"
+    else:
+        st.session_state.workflow_name = template_name
+
+    st.session_state.last_template = template_name
+
+    clear_results()
+
+
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -469,25 +566,11 @@ with st.sidebar:
 
     st.markdown("### How It Works")
 
-    st.write(
-        "1. Define your workflow"
-    )
-
-    st.write(
-        "2. Configure the stages"
-    )
-
-    st.write(
-        "3. Enter your request"
-    )
-
-    st.write(
-        "4. Run the workflow"
-    )
-
-    st.write(
-        "5. Review the final answer"
-    )
+    st.write("1. Define your workflow")
+    st.write("2. Configure the stages")
+    st.write("3. Enter your request")
+    st.write("4. Run the workflow")
+    st.write("5. Review the final answer")
 
     st.markdown("---")
 
@@ -527,6 +610,40 @@ st.divider()
 
 
 # ============================================================
+# WORKFLOW TEMPLATE
+# ============================================================
+
+st.markdown("## 🧰 Workflow Template")
+
+template_options = list(WORKFLOW_TEMPLATES.keys())
+
+template_name = st.selectbox(
+    "Choose a workflow template",
+    template_options,
+    index=template_options.index(
+        st.session_state.last_template
+    )
+    if st.session_state.last_template in template_options
+    else 0,
+)
+
+st.caption(
+    WORKFLOW_TEMPLATES[template_name]["description"]
+)
+
+
+# ============================================================
+# APPLY TEMPLATE CHANGE
+# ============================================================
+
+if template_name != st.session_state.last_template:
+
+    load_template(template_name)
+
+    st.rerun()
+
+
+# ============================================================
 # WORKFLOW INFORMATION
 # ============================================================
 
@@ -535,32 +652,35 @@ st.markdown("## ⚙️ Workflow Information")
 col1, col2 = st.columns(2)
 
 with col1:
+
     workflow_name = st.text_input(
-    "Workflow Name",
-    key="workflow_name_input",
-)
+        "Workflow Name",
+        value=st.session_state.workflow_name,
+    )
 
-st.session_state.workflow_name = workflow_name
+    if workflow_name != st.session_state.workflow_name:
 
-if workflow_name != st.session_state.workflow_name:
         st.session_state.workflow_name = workflow_name
+
         clear_results()
 
 
 with col2:
+
     workflow_description = st.text_input(
         "Workflow Description",
         value=st.session_state.workflow_description,
-        key="workflow_description_input",
     )
 
     if (
         workflow_description
         != st.session_state.workflow_description
     ):
+
         st.session_state.workflow_description = (
             workflow_description
         )
+
         clear_results()
 
 
@@ -573,12 +693,15 @@ st.markdown("## 📊 Workflow Overview")
 metric1, metric2, metric3 = st.columns(3)
 
 with metric1:
+
     st.metric(
         "Stages",
         len(st.session_state.stages),
     )
 
+
 with metric2:
+
     completed_count = sum(
         1
         for status in st.session_state.stage_status
@@ -590,20 +713,29 @@ with metric2:
         completed_count,
     )
 
+
 with metric3:
+
     if st.session_state.run_completed:
+
         status_text = "Completed"
+
     elif any(
         status == "running"
         for status in st.session_state.stage_status
     ):
+
         status_text = "Running"
+
     elif any(
         status == "failed"
         for status in st.session_state.stage_status
     ):
+
         status_text = "Failed"
+
     else:
+
         status_text = "Ready"
 
     st.metric(
@@ -611,57 +743,11 @@ with metric3:
         status_text,
     )
 
-# -----------------------------
-# Workflow Template
-# -----------------------------
 
-st.markdown("## 🧰 Workflow Template")
-
-template_name = st.selectbox(
-    "Choose a workflow template",
-    list(WORKFLOW_TEMPLATES.keys()),
-)
-
-st.caption(
-    WORKFLOW_TEMPLATES[template_name]["description"]
-)
-if "last_template" not in st.session_state:
-    st.session_state.last_template = template_name
-
-if template_name != st.session_state.last_template:
-
-    selected_template = WORKFLOW_TEMPLATES[template_name]
-
-    st.session_state.stages = [
-        {
-            "id": str(uuid.uuid4()),
-            "name": stage["name"],
-            "purpose": stage["purpose"],
-            "instruction": stage["instruction"],
-        }
-        for stage in selected_template["stages"]
-    ]
-
-    st.session_state.workflow_description = (
-        selected_template["description"]
-    )
-
-if template_name == "Custom Workflow":
-    new_workflow_name = "My AI Workflow"
-else:
-    new_workflow_name = template_name
-
-st.session_state.workflow_name = new_workflow_name
-st.session_state.workflow_name_input = new_workflow_name 
-
-st.session_state.last_template = template_name
-
-clear_results()
-
-st.rerun()
 # ============================================================
 # WORKFLOW BUILDER
 # ============================================================
+
 st.markdown("## 🧩 Workflow Builder")
 
 st.caption(
@@ -688,10 +774,13 @@ for index, stage in enumerate(
 
     if status == "completed":
         status_icon = "✅"
+
     elif status == "running":
         status_icon = "🔄"
+
     elif status == "failed":
         status_icon = "❌"
+
     else:
         status_icon = "⚪"
 
@@ -699,7 +788,10 @@ for index, stage in enumerate(
         f"### {status_icon} Stage {stage_number} — {stage['name']}"
     )
 
-    st.caption(stage["purpose"])
+    st.caption(
+        stage["purpose"]
+    )
+
 
     # --------------------------------------------------------
     # STAGE CONTROLS
@@ -710,38 +802,53 @@ for index, stage in enumerate(
     )
 
     with control1:
+
         if st.button(
             "⬆️ Move Up",
             key=f"move_up_{stage['id']}",
             disabled=index == 0,
             use_container_width=True,
         ):
+
             move_stage_up(index)
             st.rerun()
 
+
     with control2:
+
         if st.button(
             "⬇️ Move Down",
             key=f"move_down_{stage['id']}",
-            disabled=index
-            == len(st.session_state.stages) - 1,
+            disabled=(
+                index
+                == len(st.session_state.stages) - 1
+            ),
             use_container_width=True,
         ):
+
             move_stage_down(index)
             st.rerun()
 
+
     with control3:
+
         if st.button(
             "🗑️ Delete",
             key=f"delete_{stage['id']}",
-            disabled=len(st.session_state.stages) <= 2,
+            disabled=(
+                len(st.session_state.stages) <= 2
+            ),
             use_container_width=True,
         ):
+
             delete_stage(index)
             st.rerun()
 
+
     with control4:
+
         st.write("")
+
 
     # --------------------------------------------------------
     # STAGE EDITOR
@@ -752,11 +859,18 @@ for index, stage in enumerate(
         expanded=index == 0,
     ):
 
-        name_key = f"stage_name_{stage['id']}"
-        purpose_key = f"stage_purpose_{stage['id']}"
+        name_key = (
+            f"stage_name_{stage['id']}"
+        )
+
+        purpose_key = (
+            f"stage_purpose_{stage['id']}"
+        )
+
         instruction_key = (
             f"stage_instruction_{stage['id']}"
         )
+
 
         new_name = st.text_input(
             "Stage Name",
@@ -764,11 +878,13 @@ for index, stage in enumerate(
             key=name_key,
         )
 
+
         new_purpose = st.text_input(
             "Stage Purpose",
             value=stage["purpose"],
             key=purpose_key,
         )
+
 
         new_instruction = st.text_area(
             "Stage Instructions",
@@ -777,10 +893,12 @@ for index, stage in enumerate(
             key=instruction_key,
         )
 
+
         if (
             new_name != stage["name"]
             or new_purpose != stage["purpose"]
-            or new_instruction != stage["instruction"]
+            or new_instruction
+            != stage["instruction"]
         ):
 
             stage["name"] = new_name
@@ -788,6 +906,7 @@ for index, stage in enumerate(
             stage["instruction"] = new_instruction
 
             clear_results()
+
 
     # --------------------------------------------------------
     # STAGE OUTPUT
@@ -797,14 +916,19 @@ for index, stage in enumerate(
         st.session_state.stage_outputs
     ):
 
-        output = st.session_state.stage_outputs[index]
+        output = (
+            st.session_state.stage_outputs[index]
+        )
 
-        with st.expander(
-            f"📄 Stage {stage_number} Output",
-            expanded=False,
-        ):
+        if output:
 
-            st.write(output)
+            with st.expander(
+                f"📄 Stage {stage_number} Output",
+                expanded=False,
+            ):
+
+                st.write(output)
+
 
     st.divider()
 
@@ -819,6 +943,7 @@ if len(st.session_state.stages) < 5:
         "➕ Add Stage",
         use_container_width=True,
     ):
+
         add_stage()
         st.rerun()
 
@@ -892,11 +1017,9 @@ if run_button:
 
         st.session_state.run_completed = False
 
-        current_context = user_prompt
-
         progress_bar = st.progress(
             0,
-            text="Starting workflow..."
+            text="Starting workflow...",
         )
 
         status_placeholder = st.empty()
@@ -906,6 +1029,11 @@ if run_button:
         )
 
         workflow_failed = False
+
+
+        # ----------------------------------------------------
+        # EXECUTE EACH STAGE
+        # ----------------------------------------------------
 
         for index, stage in enumerate(
             st.session_state.stages
@@ -921,6 +1049,7 @@ if run_button:
                 f"Running Stage {stage_number}: "
                 f"{stage['name']}"
             )
+
 
             system_prompt = f"""
 You are executing Stage {stage_number}
@@ -940,6 +1069,7 @@ You must follow the stage instructions carefully.
 The output of this stage will be passed to
 the next stage of the workflow.
 """
+
 
             if index == 0:
 
@@ -973,6 +1103,7 @@ Previous Stage Output:
 Now perform the current stage.
 """
 
+
             try:
 
                 output = call_groq(
@@ -988,7 +1119,6 @@ Now perform the current stage.
                     index
                 ] = "completed"
 
-                current_context = output
 
                 progress = (
                     stage_number / total_stages
@@ -1002,6 +1132,7 @@ Now perform the current stage.
                         f"{total_stages}"
                     ),
                 )
+
 
             except Exception as error:
 
@@ -1018,6 +1149,11 @@ Now perform the current stage.
 
                 break
 
+
+        # ----------------------------------------------------
+        # WORKFLOW COMPLETION
+        # ----------------------------------------------------
+
         if not workflow_failed:
 
             st.session_state.final_answer = (
@@ -1028,12 +1164,13 @@ Now perform the current stage.
 
             progress_bar.progress(
                 1.0,
-                text="Workflow completed successfully."
+                text="Workflow completed successfully.",
             )
 
             status_placeholder.success(
                 "✅ Workflow completed successfully."
             )
+
         else:
 
             progress_bar.empty()
@@ -1042,8 +1179,9 @@ Now perform the current stage.
                 "❌ Workflow stopped because a stage failed."
             )
 
-        # Refresh the dashboard so Workflow Overview
-        # shows the updated execution status.
+
+        # Refresh dashboard after execution
+
         st.rerun()
 
 
