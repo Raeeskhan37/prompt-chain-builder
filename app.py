@@ -1196,7 +1196,7 @@ and the selected Output Intent.
 """
 
 
-            try:
+        try:
 
                 output = call_groq(
                     system_prompt,
