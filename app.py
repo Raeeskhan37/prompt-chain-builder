@@ -355,7 +355,47 @@ WORKFLOW_TEMPLATES = {
     },
 }
 
+# ============================================================
+# OUTPUT INTENT
+# ============================================================
 
+OUTPUT_INTENTS = {
+    "⚡ Quick Answer": {
+        "description": "Short and direct answer with only the essential information.",
+        "instruction": (
+            "Keep the final answer concise. Give only the essential "
+            "information needed to answer the user's request. Avoid "
+            "unnecessary background, long explanations and excessive examples."
+        ),
+    },
+
+    "🙂 Simple Explanation": {
+        "description": "Easy-to-understand explanation for a general user or beginner.",
+        "instruction": (
+            "Explain the answer in simple, clear language suitable for a "
+            "beginner. Avoid unnecessary technical terminology. Use a short "
+            "example when it improves understanding."
+        ),
+    },
+
+    "📚 Detailed Explanation": {
+        "description": "A well-structured explanation with useful details and examples.",
+        "instruction": (
+            "Provide a well-structured and informative answer. Include the "
+            "important details, explanations and examples needed for good "
+            "understanding, while avoiding unnecessary complexity."
+        ),
+    },
+
+    "🔎 Comprehensive Analysis": {
+        "description": "Deep and thorough treatment of the user's request.",
+        "instruction": (
+            "Provide a comprehensive and thorough answer. Cover relevant "
+            "details, important considerations, examples, limitations and "
+            "supporting explanations. Do not omit important information."
+        ),
+    },
+}
 # ============================================================
 # SESSION STATE
 # ============================================================
@@ -367,6 +407,9 @@ if "workflow_description" not in st.session_state:
     st.session_state.workflow_description = (
         "A multi-stage AI workflow."
     )
+
+if "output_intent" not in st.session_state:
+    st.session_state.output_intent = "🙂 Simple Explanation"
 
 if "stages" not in st.session_state:
     st.session_state.stages = [
@@ -657,7 +700,34 @@ if template_name != st.session_state.last_template:
 
     st.rerun()
 
+# ============================================================
+# OUTPUT INTENT
+# ============================================================
 
+st.markdown("## 🎯 Output Intent")
+
+output_intent = st.selectbox(
+    "How should the workflow answer?",
+    list(OUTPUT_INTENTS.keys()),
+    index=list(OUTPUT_INTENTS.keys()).index(
+        st.session_state.output_intent
+    ),
+)
+
+if output_intent != st.session_state.output_intent:
+    st.session_state.output_intent = output_intent
+    clear_results()
+
+st.caption(
+    OUTPUT_INTENTS[output_intent]["description"]
+)
+
+
+# ============================================================
+# WORKFLOW INFORMATION
+# ============================================================
+
+st.markdown("## ⚙️ Workflow Information")
 # ============================================================
 # WORKFLOW INFORMATION
 # ============================================================
@@ -1066,6 +1136,10 @@ if run_button:
             )
 
 
+            output_instruction = OUTPUT_INTENTS[
+    st.session_state.output_intent
+]["instruction"]
+
             system_prompt = f"""
 You are executing Stage {stage_number}
 of a multi-stage AI workflow.
@@ -1079,7 +1153,16 @@ Stage Purpose:
 Stage Instructions:
 {stage['instruction']}
 
+Output Intent:
+{st.session_state.output_intent}
+
+Output Intent Instructions:
+{output_instruction}
+
 You must follow the stage instructions carefully.
+
+The selected Output Intent controls the desired depth,
+complexity and presentation style of the final result.
 
 The output of this stage will be passed to
 the next stage of the workflow.
