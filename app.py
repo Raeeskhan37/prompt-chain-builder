@@ -373,17 +373,20 @@ WORKFLOW_TEMPLATES = {
 
 OUTPUT_INTENTS = {
     "⚡ Quick Answer": {
-        "description": "Short and direct answer with only the essential information.",
-        "max_words": 120,
-        "instruction": (
-            "STRICT LENGTH REQUIREMENT: The final answer must be no more than "
-            "120 words. Give only the essential information needed to answer "
-            "the user's request. Prefer 3–6 short bullets or 1–2 short "
-            "paragraphs. Do not use tables. Do not provide long examples. "
-            "Do not add unnecessary background, extended explanations, repeated "
-            "summaries, or extra sections."
-        ),
-    },
+    "description": "Short and direct answer with only the essential information.",
+    "max_words": 60,
+    "instruction": """
+Answer very briefly and directly.
+
+STRICT LIMIT: maximum 60 words.
+
+Use only the essential information.
+Prefer 1–3 short paragraphs or up to 4 short bullets.
+Do not add unnecessary sections, tips, tools, summaries, cheat-sheets,
+background information, or extended examples.
+Do not repeat the question.
+"""
+},
 
     "🙂 Simple Explanation": {
         "description": "Easy-to-understand explanation for a general user or beginner.",
