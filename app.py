@@ -258,81 +258,120 @@ DEFAULT_STAGES = [
 
 WORKFLOW_TEMPLATES = {
     "Custom Workflow": {
-        "description": "Build your own multi-stage AI workflow.",
-        "stages": DEFAULT_STAGES,
+        "description": "Build a custom multi-stage AI workflow.",
+        "stages": [
+            {
+                "name": "Analysis",
+                "purpose": "Understand and analyze the user request.",
+                "instruction": (
+                    "Analyze the user's request carefully. Identify the "
+                    "main objective, requirements, constraints and important "
+                    "details needed to solve the task."
+                ),
+            },
+            {
+                "name": "Development",
+                "purpose": "Develop the main solution.",
+                "instruction": (
+                    "Develop the main solution based on the user's request "
+                    "and the analysis from the previous stage."
+                ),
+            },
+            {
+                "name": "Refinement",
+                "purpose": "Improve clarity, completeness and usefulness.",
+                "instruction": (
+                    "Review the solution and improve its clarity, "
+                    "completeness, accuracy and usefulness. Remove "
+                    "unnecessary material."
+                ),
+            },
+            {
+                "name": "Quality Check",
+                "purpose": "Check quality and correct problems.",
+                "instruction": (
+                    "Perform a rigorous quality check. Look for factual "
+                    "errors, logical problems, contradictions, missing "
+                    "requirements and unclear content. Correct problems "
+                    "where possible without inventing information."
+                ),
+            },
+            {
+                "name": "Final Answer",
+                "purpose": "Produce the final response.",
+                "instruction": (
+                    "Produce the final answer based on the reviewed solution. "
+                    "Follow the selected Output Intent strictly and provide "
+                    "only the useful answer to the user."
+                ),
+            },
+        ],
     },
 
     "Email Writer": {
-        "description": "Create professional emails quickly.",
+        "description": "Create clear, professional and well-structured emails.",
         "stages": [
             {
                 "name": "Understand Request",
-                "purpose": "Understand the purpose, recipient and required tone.",
+                "purpose": "Understand the email requirements.",
                 "instruction": (
-                    "Understand the user's email request. Identify the purpose, "
-                    "recipient, important facts, requested action and appropriate tone."
+                    "Understand the user's purpose, recipient, subject, "
+                    "tone, important facts and required action."
                 ),
             },
             {
                 "name": "Draft Email",
-                "purpose": "Create the main email.",
+                "purpose": "Create the email draft.",
                 "instruction": (
-                    "Create a professional, clear and concise email using "
-                    "the information provided by the user."
+                    "Write a clear and professional email based on the "
+                    "user's requirements. Do not invent missing facts."
                 ),
             },
             {
                 "name": "Review",
-                "purpose": "Verify the email for accuracy, clarity and professionalism.",
+                "purpose": "Check the email for quality and accuracy.",
                 "instruction": (
-                    "Perform a rigorous review of the email. Check grammar, "
-                    "clarity, tone, completeness and professionalism. Verify "
-                    "dates, days of the week, numbers, names, times and factual "
-                    "details. Identify and correct contradictions, incorrect "
-                    "assumptions or unsupported details. Do not invent information "
-                    "that the user did not provide. If information is missing, "
-                    "use a suitable placeholder or neutral wording. Return the "
-                    "corrected email for the Final Email stage."
+                    "Review grammar, clarity, tone, completeness, dates, "
+                    "days, numbers, names, times and facts. Check for "
+                    "contradictions and unsupported details. Do not invent "
+                    "information."
                 ),
             },
             {
                 "name": "Final Email",
-                "purpose": "Produce the accurate, polished and ready-to-send email.",
+                "purpose": "Produce the polished email.",
                 "instruction": (
-                    "Use the reviewed result to produce the final polished email. "
-                    "Apply all corrections and do not reintroduce errors. Preserve "
-                    "the user's facts and do not invent missing personal details. "
-                    "Use placeholders such as [Boss's Name] or [Your Name] when "
-                    "necessary. Return only the final polished email."
+                    "Produce the final polished email. Follow the selected "
+                    "Output Intent strictly. Return only the email content."
                 ),
             },
         ],
     },
 
     "Content Writer": {
-        "description": "Create well-structured articles and content.",
+        "description": "Create clear, engaging and well-structured content.",
         "stages": [
             {
                 "name": "Content Analysis",
-                "purpose": "Understand the topic and audience.",
+                "purpose": "Understand the content requirements.",
                 "instruction": (
-                    "Analyze the requested topic, target audience, purpose, "
-                    "tone and important points that should be covered."
+                    "Analyze the user's topic, audience, purpose, tone and "
+                    "required content structure."
                 ),
             },
             {
                 "name": "Content Creation",
-                "purpose": "Write the main content.",
+                "purpose": "Create the main content.",
                 "instruction": (
-                    "Create useful, engaging and well-structured content "
-                    "based on the analysis and user's request."
+                    "Create useful and well-structured content based on the "
+                    "user's requirements."
                 ),
             },
             {
                 "name": "Content Review",
-                "purpose": "Improve quality and readability.",
+                "purpose": "Improve quality and completeness.",
                 "instruction": (
-                    "Review the content for accuracy, structure, readability, "
+                    "Review the content for accuracy, clarity, "
                     "completeness and engagement. Improve weak areas and "
                     "remove unnecessary material."
                 ),
@@ -390,8 +429,11 @@ WORKFLOW_TEMPLATES = {
         ],
     },
 
-"Research Assistant": {
-        "description": "Research, analyze, organize and verify information before producing a final answer.",
+    "Research Assistant": {
+        "description": (
+            "Research, analyze, organize and verify information "
+            "before producing a final answer."
+        ),
         "stages": [
             {
                 "name": "Understand Request",
@@ -441,6 +483,8 @@ WORKFLOW_TEMPLATES = {
             },
         ],
     },
+}
+
 # =========================================================
 # OUTPUT INTENTS
 # =========================================================
