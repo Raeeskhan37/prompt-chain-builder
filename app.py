@@ -144,10 +144,39 @@ st.markdown(
 # =========================================================
 
 MODEL_NAME = "openai/gpt-oss-120b"
-WHISPER_MODEL = "whisper-large-v3-turbo"
+
+# Large V3 is preferred here because multilingual
+# transcription accuracy is more important than speed.
+WHISPER_MODEL = "whisper-large-v3"
 
 MAX_CONTEXT_CHARS = 6000
 MAX_OUTPUT_TOKENS = 1200
+
+
+# =========================================================
+# OUTPUT LANGUAGES
+# =========================================================
+
+OUTPUT_LANGUAGES = {
+    "Auto (same as input)": "Detect the language of the original user request and answer in that same language and script.",
+    "English": "English",
+    "Urdu": "Urdu using Urdu script (اردو). NEVER use Hindi or Devanagari script.",
+    "Pashto": "Pashto using Pashto script (پښتو).",
+    "Arabic": "Arabic",
+    "Chinese": "Chinese",
+    "Spanish": "Spanish",
+    "French": "French",
+    "German": "German",
+    "Turkish": "Turkish",
+    "Hindi": "Hindi using Devanagari script.",
+    "Bengali": "Bengali",
+    "Persian": "Persian",
+    "Russian": "Russian",
+    "Italian": "Italian",
+    "Portuguese": "Portuguese",
+    "Japanese": "Japanese",
+    "Korean": "Korean",
+}
 
 
 # =========================================================
@@ -556,6 +585,9 @@ if "workflow_description" not in st.session_state:
 if "output_intent" not in st.session_state:
     st.session_state.output_intent = "🙂 Simple Explanation"
 
+if "output_language" not in st.session_state:
+    st.session_state.output_language = "Auto (same as input)"
+
 if "stages" not in st.session_state:
     st.session_state.stages = [
         {
@@ -597,6 +629,9 @@ if "voice_transcript" not in st.session_state:
 if "last_audio_id" not in st.session_state:
     st.session_state.last_audio_id = None
 
+if "user_prompt_input" not in st.session_state:
+    st.session_state.user_prompt_input = ""
+
 
 # =========================================================
 # HELPER FUNCTIONS
@@ -612,7 +647,7 @@ def limit_context(text, max_chars=MAX_CONTEXT_CHARS):
     return text[-max_chars:]
 
 
-def call_groq(system_prompt, user_prompt, retries=3):
+def call_groq(system_prompt, user_prompt, retries=3, max_tokens=None):
     last_error = None
 
     for attempt in range(retries):
@@ -631,7 +666,7 @@ def call_groq(system_prompt, user_prompt, retries=3):
                     },
                 ],
                 temperature=0.4,
-                max_tokens=MAX_OUTPUT_TOKENS,
+                max_tokens=max_tokens or MAX_OUTPUT_TOKENS,
             )
 
             return response.choices[0].message.content
@@ -650,92 +685,107 @@ def call_groq(system_prompt, user_prompt, retries=3):
 # VOICE FUNCTIONS
 # =========================================================
 
-def transcribe_audio(audio_bytes, language_choice):
+def transcribe_audio(audio_bytes):
     """
-    Convert recorded audio into text using Groq Whisper.
+    Automatically detect the spoken language and transcribe
+    the speech in the original language/script.
+
+    IMPORTANT:
+    This uses the transcription endpoint, NOT the translation
+    endpoint. Therefore the speech is not intentionally translated.
     """
-
-    language_map = {
-        "Auto Detect": None,
-        "English": "en",
-        "Urdu": "ur",
-        "Pashto": "ps",
-    }
-
-    selected_language = language_map.get(
-        language_choice
-    )
 
     audio_file = (
         "voice_input.wav",
         audio_bytes,
     )
 
-    kwargs = {
-        "file": audio_file,
-        "model": WHISPER_MODEL,
-        "response_format": "text",
-    }
+    transcription_prompt = """
+Transcribe the speaker's words exactly in the language that was spoken.
 
-    if selected_language:
-        kwargs["language"] = selected_language
+IMPORTANT MULTILINGUAL RULES:
+
+- Automatically detect the spoken language.
+- Transcribe; do NOT translate.
+- Preserve the original language.
+- Preserve the original writing system/script.
+- If the speaker is speaking Urdu, write the transcription in Urdu script (اردو).
+- NEVER convert Urdu speech into Hindi or Devanagari script.
+- If the speaker is speaking Pashto, write it in Pashto script (پښتو).
+- If the speaker is speaking English, write it in English.
+- Do not translate Urdu into Hindi.
+- Do not translate Pashto into another language.
+- Do not translate English into another language.
+- Preserve names, numbers, places and technical terms as spoken.
+"""
 
     transcription = client.audio.transcriptions.create(
-        **kwargs
+        file=audio_file,
+        model=WHISPER_MODEL,
+        prompt=transcription_prompt,
+        response_format="verbose_json",
+        temperature=0.0,
     )
-
-    if isinstance(transcription, str):
-        return transcription.strip()
 
     if hasattr(transcription, "text"):
         return transcription.text.strip()
+
+    if isinstance(transcription, str):
+        return transcription.strip()
 
     return str(transcription).strip()
 
 
 def clean_voice_transcript(transcript):
     """
-    Correct obvious speech-to-text mistakes without changing
-    the user's intended meaning.
+    Correct obvious speech-to-text mistakes while preserving
+    the original language and script.
     """
 
     if not transcript:
         return ""
 
     correction_prompt = f"""
-You are an intelligent speech-transcript correction assistant.
+You are an intelligent multilingual speech-transcript correction assistant.
 
-The following text was produced by speech-to-text.
+The text below was produced by a multilingual speech-to-text model.
 
-Your task is to correct obvious transcription errors and make the
-user's intended request clear.
+Your task is to correct obvious transcription errors while preserving
+exactly what the speaker intended.
 
-IMPORTANT RULES:
+CRITICAL LANGUAGE RULES:
 
-- Preserve the user's original meaning.
-- Do not change the user's intention.
-- Correct obvious misrecognized words using context.
-- Correct spelling and grammar when appropriate.
-- Handle natural spoken English, Urdu and Pashto.
-- Do not translate unless necessary to understand the request.
-- Do not add information that the user did not provide.
-- Do not invent names, dates, numbers, places or facts.
-- If the transcript is already correct, leave it essentially unchanged.
-- If a word is ambiguous, use the surrounding context to determine
-  the most likely intended meaning.
-- Return ONLY the corrected user request.
-- Do not explain your corrections.
+1. Detect the language of the transcript.
+2. Keep the transcript in that SAME language.
+3. Keep the SAME writing system/script.
+4. NEVER translate the transcript.
+5. NEVER convert Urdu into Hindi.
+6. If the intended language is Urdu, use Urdu script (اردو), NOT
+   Devanagari/Hindi script.
+7. If the intended language is Pashto, use Pashto script (پښتو).
+8. If the intended language is English, keep it in English.
+9. Preserve mixed-language technical terms when they are clearly part
+   of the speaker's request.
+10. Do not add information.
+11. Do not invent names, dates, numbers, places or facts.
+12. Correct only obvious speech-recognition, spelling, punctuation or
+   grammar mistakes.
+13. If the transcript is already correct, leave it essentially unchanged.
+14. Return ONLY the corrected transcript.
 
-Speech-to-text transcript:
+Speech transcript:
 {transcript}
 """
 
     try:
+
         corrected = call_groq(
-            """You correct speech-to-text transcripts.
-Preserve the speaker's intended meaning exactly.
-Never invent missing information.""",
+            """You correct multilingual speech-to-text transcripts.
+Preserve the original language and script.
+Never translate the user's request.
+Never convert Urdu into Hindi or Devanagari.""",
             correction_prompt,
+            max_tokens=800,
         )
 
         if corrected:
@@ -747,16 +797,22 @@ Never invent missing information.""",
     return transcript.strip()
 
 
-def process_voice_input(audio_bytes, language_choice):
+def process_voice_input(audio_bytes):
     """
     Full voice pipeline:
-    Audio -> Speech-to-text -> AI correction.
+
+    Audio
+       ↓
+    Automatic language detection
+       ↓
+    Original-language transcription
+       ↓
+    Multilingual transcript correction
+       ↓
+    Same text box
     """
 
-    transcript = transcribe_audio(
-        audio_bytes,
-        language_choice,
-    )
+    transcript = transcribe_audio(audio_bytes)
 
     if not transcript:
         raise ValueError(
@@ -803,6 +859,7 @@ ABSOLUTE LIMIT:
 Maximum {max_words} words.
 
 IMPORTANT:
+
 - Keep only the information necessary to answer the user's request.
 - Do not add new information.
 - Do not create sections such as Tips, Tools, Summary, or Cheat-Sheet.
@@ -810,6 +867,9 @@ IMPORTANT:
 - Remove unnecessary examples.
 - Remove background information.
 - Use simple language.
+- Preserve the SAME OUTPUT LANGUAGE requested by the user.
+- If Output Language is Urdu, use Urdu script only.
+- NEVER convert Urdu into Hindi or Devanagari.
 - For Quick Answer, use 1–3 short paragraphs or up to 4 short bullets.
 - The result must be suitable to display directly to the user.
 
@@ -823,8 +883,9 @@ Answer to compress:
 
         compressed = call_groq(
             """You are a strict final-answer editor.
-Your only job is to make answers concise while preserving their meaning.
-Never add information.""",
+Make answers concise while preserving meaning.
+Always preserve the requested output language and script.
+Never translate Urdu into Hindi.""",
             compression_prompt,
         )
 
@@ -857,6 +918,7 @@ def reset_workflow():
     st.session_state.workflow_name = "My AI Workflow"
     st.session_state.workflow_description = "A multi-stage AI workflow."
     st.session_state.output_intent = "🙂 Simple Explanation"
+    st.session_state.output_language = "Auto (same as input)"
 
     st.session_state.stages = [
         {
@@ -873,6 +935,7 @@ def reset_workflow():
     st.session_state.workflow_running = False
     st.session_state.voice_transcript = ""
     st.session_state.last_audio_id = None
+    st.session_state.user_prompt_input = ""
 
     clear_results()
 
@@ -1123,7 +1186,7 @@ with st.sidebar:
         Customize the AI workflow if required.
 
         **3. Provide Information**  
-        Enter what you want the AI to process.
+        Type or speak naturally.
 
         **4. Run Workflow**  
         AI processes the request stage by stage.
@@ -1141,6 +1204,10 @@ with st.sidebar:
 
     st.caption(
         f"Voice model: `{WHISPER_MODEL}`"
+    )
+
+    st.caption(
+        "Voice language: Automatic detection"
     )
 
     st.caption(
@@ -1320,6 +1387,47 @@ if option_label:
         )
 
         clear_results()
+
+
+# =========================================================
+# OUTPUT LANGUAGE
+# =========================================================
+
+output_language = st.selectbox(
+    "🌐 Output Language",
+    list(OUTPUT_LANGUAGES.keys()),
+    index=(
+        list(OUTPUT_LANGUAGES.keys()).index(
+            st.session_state.output_language
+        )
+        if st.session_state.output_language
+        in OUTPUT_LANGUAGES
+        else 0
+    ),
+    disabled=st.session_state.workflow_running,
+)
+
+if (
+    output_language
+    != st.session_state.output_language
+    and not st.session_state.workflow_running
+):
+
+    st.session_state.output_language = output_language
+    clear_results()
+
+if output_language == "Auto (same as input)":
+
+    st.caption(
+        "The AI will detect the language of your request and "
+        "answer in the same language."
+    )
+
+else:
+
+    st.caption(
+        f"Final answers will be produced in {output_language}."
+    )
 
 
 # =========================================================
@@ -1552,33 +1660,14 @@ with st.expander(
 
 st.markdown("## 🎤 Voice Input")
 
-voice_col1, voice_col2 = st.columns(
-    [2, 1]
+st.caption(
+    "Speak naturally in any supported language. "
+    "The language is detected automatically and your speech "
+    "is transcribed in the same language and script."
 )
 
-with voice_col1:
-
-    voice_language = st.selectbox(
-        "Speech Language",
-        [
-            "Auto Detect",
-            "English",
-            "Urdu",
-            "Pashto",
-        ],
-        disabled=st.session_state.workflow_running,
-    )
-
-with voice_col2:
-
-    st.caption(
-        "Speak naturally. The AI will correct obvious "
-        "speech-to-text mistakes before processing."
-    )
-
-
 audio_value = st.audio_input(
-    "🎙️ Record your request",
+    "🎙️ Speak your request",
     disabled=st.session_state.workflow_running,
 )
 
@@ -1602,22 +1691,25 @@ if (
     ):
 
         with st.spinner(
-            "🎤 Converting your voice to text..."
+            "🎤 Detecting language and converting your voice to text..."
         ):
 
             try:
 
                 corrected_text = process_voice_input(
-                    audio_bytes,
-                    voice_language,
+                    audio_bytes
                 )
 
+                if not corrected_text:
+                    raise ValueError(
+                        "No usable text was returned from the recording."
+                    )
+
+                # IMPORTANT:
+                # This happens BEFORE the text_area widget
+                # is created below.
                 st.session_state.voice_transcript = (
                     corrected_text
-                )
-
-                st.session_state.last_audio_id = (
-                    audio_id
                 )
 
                 st.session_state.last_prompt = (
@@ -1628,10 +1720,15 @@ if (
                     corrected_text
                 )
 
+                st.session_state.last_audio_id = (
+                    audio_id
+                )
+
                 clear_results()
 
                 st.success(
-                    "✅ Voice converted and understood successfully."
+                    "✅ Voice converted automatically. "
+                    "You can edit the text below if needed."
                 )
 
             except Exception as error:
@@ -1668,20 +1765,11 @@ placeholder_text = (
     "Example: Research the benefits and risks of artificial intelligence."
     if template_name == "Research Assistant"
     else
-    "Enter the request you want your workflow to process."
+    "Enter or speak the request you want your workflow to process."
 )
-
-
-default_request = (
-    st.session_state.voice_transcript
-    if st.session_state.voice_transcript
-    else st.session_state.last_prompt
-)
-
 
 user_prompt = st.text_area(
     "Describe your request",
-    value=default_request,
     height=150,
     placeholder=placeholder_text,
     key="user_prompt_input",
@@ -1799,6 +1887,83 @@ if run_clicked:
             )
         )
 
+        # -------------------------------------------------
+        # OUTPUT LANGUAGE INSTRUCTION
+        # -------------------------------------------------
+
+        selected_output_language = (
+            st.session_state.output_language
+        )
+
+        if (
+            selected_output_language
+            == "Auto (same as input)"
+        ):
+
+            language_instruction = """
+OUTPUT LANGUAGE:
+
+Automatically identify the language and script of the
+Original User Request.
+
+The final answer MUST use the same language and script
+as the user's original request.
+
+Examples:
+
+- Urdu input → Urdu script.
+- Pashto input → Pashto script.
+- English input → English.
+- Arabic input → Arabic.
+- Roman Urdu input → Roman Urdu unless the user explicitly
+  requests another language.
+
+CRITICAL:
+
+Urdu is NOT Hindi.
+
+If the user speaks or writes Urdu, respond in Urdu script
+(اردو), NOT Hindi and NOT Devanagari.
+
+Do not translate the user's language unless the user explicitly
+requests translation.
+"""
+
+        else:
+
+            requested_language_description = (
+                OUTPUT_LANGUAGES[
+                    selected_output_language
+                ]
+            )
+
+            language_instruction = f"""
+OUTPUT LANGUAGE:
+
+The user explicitly selected:
+
+{selected_output_language}
+
+The final answer MUST be written in:
+{requested_language_description}
+
+This output-language instruction has priority over the
+detected input language.
+
+Do NOT answer in the input language if it differs from
+the selected output language.
+
+CRITICAL:
+
+If the selected output language is Urdu, use Urdu script
+(اردو) only.
+
+NEVER convert Urdu into Hindi or Devanagari.
+
+Return the final user-facing answer ONLY in the selected
+output language.
+"""
+
         workflow_failed = False
 
 
@@ -1846,11 +2011,17 @@ Original User Request:
 Selected Workflow:
 {template_name}
 
-Selected User Option:
+Selected Workflow Option:
 {st.session_state.template_option}
 
 Selected Output Intent:
 {st.session_state.output_intent}
+
+Selected Output Language:
+{selected_output_language}
+
+LANGUAGE REQUIREMENT:
+{language_instruction}
 
 Previous Stage Output:
 {
@@ -1892,6 +2063,9 @@ to the user.
 The selected Answer Style is:
 {st.session_state.output_intent}
 
+The selected Output Language is:
+{selected_output_language}
+
 STRICT MAXIMUM LENGTH:
 The final answer must not exceed {max_words} words.
 
@@ -1910,10 +2084,9 @@ Do not add a long introduction.
 
 Do not create unnecessary sections.
 
-If Quick Answer is selected:
-- Maximum 60 words.
-- Prefer 1–3 short paragraphs or up to 4 short bullets.
-- Do not add tips, tools, summaries, cheat-sheets or unnecessary examples.
+LANGUAGE:
+
+{language_instruction}
 
 Return ONLY the final user-facing answer.
 """
@@ -1956,6 +2129,11 @@ Selected Output Intent:
 Output Intent Instructions:
 {output_instruction}
 
+Selected Output Language:
+{selected_output_language}
+
+{language_instruction}
+
 {final_stage_instruction}
 
 Your role is to complete ONLY the current stage effectively.
@@ -1978,6 +2156,18 @@ by the user's request or the previous stage output.
 When checking factual information, pay special attention to
 dates, days of the week, numbers, names, calculations,
 logical consistency and unsupported assumptions.
+
+LANGUAGE SAFETY:
+
+- Never randomly change the user's language.
+- Never translate unless requested or unless the selected
+  Output Language explicitly requires it.
+- Urdu must remain Urdu when Urdu is selected.
+- Urdu must use Urdu script.
+- Urdu must NEVER become Hindi or Devanagari.
+- Pashto must remain Pashto when Pashto is selected.
+- Preserve the selected output language through every stage.
+- The Final Answer stage has the highest priority for output language.
 
 Produce useful output that the next stage can directly use.
 """
@@ -2107,6 +2297,7 @@ if st.session_state.final_answer:
             f"{st.session_state.workflow_name} • "
             f"{len(st.session_state.stages)} stages • "
             f"{st.session_state.output_intent} • "
+            f"Output: {st.session_state.output_language} • "
             f"{answer_words} words"
         )
 
@@ -2226,6 +2417,11 @@ if st.session_state.run_completed:
 
             st.write(
                 f"**Model:** {MODEL_NAME}"
+            )
+
+            st.write(
+                f"**Output Language:** "
+                f"{st.session_state.output_language}"
             )
 
             st.write(
