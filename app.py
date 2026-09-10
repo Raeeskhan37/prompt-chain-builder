@@ -127,6 +127,31 @@ st.markdown(
         margin-top: 0.15rem;
     }
 
+    .final-answer-header {
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        background: #f8fbff;
+        margin-bottom: 0.8rem;
+    }
+
+    .final-answer-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-bottom: 0.15rem;
+    }
+
+    .final-answer-subtitle {
+        color: #6b7280;
+        font-size: 0.86rem;
+    }
+
+    .final-answer-meta {
+        color: #6b7280;
+        font-size: 0.82rem;
+        margin-top: 0.35rem;
+    }
+
     .footer {
         text-align: center;
         color: #9ca3af;
@@ -373,9 +398,9 @@ WORKFLOW_TEMPLATES = {
 
 OUTPUT_INTENTS = {
     "⚡ Quick Answer": {
-    "description": "Short and direct answer with only the essential information.",
-    "max_words": 60,
-    "instruction": """
+        "description": "Short and direct answer with only the essential information.",
+        "max_words": 60,
+        "instruction": """
 Answer very briefly and directly.
 
 STRICT LIMIT: maximum 60 words.
@@ -385,8 +410,8 @@ Prefer 1–3 short paragraphs or up to 4 short bullets.
 Do not add unnecessary sections, tips, tools, summaries, cheat-sheets,
 background information, or extended examples.
 Do not repeat the question.
-"""
-},
+""",
+    },
 
     "🙂 Simple Explanation": {
         "description": "Easy-to-understand explanation for a general user or beginner.",
@@ -568,56 +593,45 @@ def compress_final_answer(answer, output_intent, template_name):
     current_words = count_words(answer)
 
     if current_words <= max_words:
-        return answer
+        return answer.strip()
 
     compression_prompt = f"""
-Compress the following final answer for the user.
-
-Selected Output Intent:
-{output_intent}
+Rewrite the following final answer into a much shorter final answer.
 
 Workflow:
 {template_name}
 
-STRICT REQUIREMENT:
-The final answer MUST be no more than {max_words} words.
+Output Style:
+{output_intent}
 
-Preserve:
-- The user's original request and intent
-- Important facts
-- Correct information
-- Essential instructions
-- Important names, dates, numbers and details
+ABSOLUTE LIMIT:
+Maximum {max_words} words.
 
-Remove:
-- Repetition
-- Unnecessary background
-- Long examples
-- Extra explanations
-- Redundant summaries
-- Unnecessary headings
+IMPORTANT:
+- Keep only the information necessary to answer the user's request.
+- Do not add new information.
+- Do not create sections such as Tips, Tools, Summary, or Cheat-Sheet.
+- Remove repetition.
+- Remove unnecessary examples.
+- Remove background information.
+- Use simple language.
+- For Quick Answer, use 1–3 short paragraphs or up to 4 short bullets.
+- The result must be suitable to display directly to the user.
 
-Do not introduce new facts.
+Return ONLY the final answer.
 
-Return ONLY the compressed final answer.
-
-Original Final Answer:
+Answer to compress:
 {answer}
 """
 
     try:
 
         compressed = call_groq(
-            (
-                "You are a professional AI editor. "
-                "Your task is to shorten an answer without losing "
-                "important meaning or factual accuracy."
-            ),
+            """You are a strict final-answer editor.
+Your only job is to make answers concise while preserving their meaning.
+Never add information.""",
             compression_prompt,
         )
-
-        if compressed and count_words(compressed) <= max_words:
-            return compressed.strip()
 
         if compressed:
             return compressed.strip()
@@ -625,7 +639,7 @@ Original Final Answer:
     except Exception:
         pass
 
-    return answer
+    return answer.strip()
 
 
 def create_stage(name="New Stage"):
@@ -1506,8 +1520,10 @@ Do not add a long introduction.
 
 Do not create unnecessary sections.
 
-If Quick Answer is selected, prefer a short direct answer,
-normally 3–6 bullets or 1–2 short paragraphs.
+If Quick Answer is selected:
+- Maximum 60 words.
+- Prefer 1–3 short paragraphs or up to 4 short bullets.
+- Do not add tips, tools, summaries, cheat-sheets or unnecessary examples.
 
 Return ONLY the final user-facing answer.
 """
@@ -1676,7 +1692,7 @@ Produce useful output that the next stage can directly use.
 
 
 # =========================================================
-# FINAL ANSWER
+# FINAL ANSWER — POLISHED RESULT SCREEN
 # =========================================================
 
 if st.session_state.final_answer:
@@ -1685,17 +1701,59 @@ if st.session_state.final_answer:
 
     st.markdown("## 🎯 Final Answer")
 
-    st.success(
-        "Your workflow has completed successfully."
-    )
-
-    st.write(
+    answer_words = count_words(
         st.session_state.final_answer
     )
 
-    download_col1, download_col2 = st.columns(2)
+    # -----------------------------------------------------
+    # FINAL ANSWER HEADER
+    # -----------------------------------------------------
 
-    with download_col1:
+    st.markdown(
+        f"""
+        <div class="final-answer-header">
+            <div class="final-answer-title">
+                ✅ Workflow Completed Successfully
+            </div>
+
+            <div class="final-answer-subtitle">
+                Your request has passed through the configured
+                multi-stage AI workflow.
+            </div>
+
+            <div class="final-answer-meta">
+                {st.session_state.workflow_name}
+                &nbsp; • &nbsp;
+                {len(st.session_state.stages)} stages
+                &nbsp; • &nbsp;
+                {st.session_state.output_intent}
+                &nbsp; • &nbsp;
+                {answer_words} words
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # -----------------------------------------------------
+    # ANSWER CONTENT
+    # -----------------------------------------------------
+
+    with st.container(border=True):
+
+        st.markdown(
+            st.session_state.final_answer
+        )
+
+    st.markdown("")
+
+    # -----------------------------------------------------
+    # ACTION BUTTONS
+    # -----------------------------------------------------
+
+    download_col, regenerate_col = st.columns(2)
+
+    with download_col:
 
         st.download_button(
             label="⬇️ Download TXT",
@@ -1705,7 +1763,7 @@ if st.session_state.final_answer:
             use_container_width=True,
         )
 
-    with download_col2:
+    with regenerate_col:
 
         if st.button(
             "🔄 Regenerate",
@@ -1716,6 +1774,7 @@ if st.session_state.final_answer:
             st.session_state.final_answer = ""
             st.session_state.stage_status = []
             st.session_state.stage_outputs = []
+
             st.rerun()
 
 
