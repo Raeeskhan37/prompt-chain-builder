@@ -1694,56 +1694,45 @@ Produce useful output that the next stage can directly use.
 # =========================================================
 # FINAL ANSWER — POLISHED RESULT SCREEN
 # =========================================================
-
 if st.session_state.final_answer:
-
     st.markdown("---")
-
     st.markdown("## 🎯 Final Answer")
 
-    answer_words = count_words(
-        st.session_state.final_answer
-    )
-
-    # -----------------------------------------------------
-    # FINAL ANSWER HEADER
-    # -----------------------------------------------------
-
-    st.markdown(
-        f"""
-        <div class="final-answer-header">
-            <div class="final-answer-title">
-                ✅ Workflow Completed Successfully
-            </div>
-
-            <div class="final-answer-subtitle">
-                Your request has passed through the configured
-                multi-stage AI workflow.
-            </div>
-
-            <div class="final-answer-meta">
-                {st.session_state.workflow_name}
-                &nbsp; • &nbsp;
-                {len(st.session_state.stages)} stages
-                &nbsp; • &nbsp;
-                {st.session_state.output_intent}
-                &nbsp; • &nbsp;
-                {answer_words} words
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # -----------------------------------------------------
-    # ANSWER CONTENT
-    # -----------------------------------------------------
+    answer_words = count_words(st.session_state.final_answer)
 
     with st.container(border=True):
+        st.success("✅ Workflow Completed Successfully")
 
-        st.markdown(
-            st.session_state.final_answer
+        st.caption(
+            f"{st.session_state.workflow_name} • "
+            f"{len(st.session_state.stages)} stages • "
+            f"{st.session_state.output_intent} • "
+            f"{answer_words} words"
         )
+
+        st.markdown(st.session_state.final_answer)
+
+    st.markdown("")
+
+    download_col, regenerate_col = st.columns(2)
+
+    with download_col:
+        st.download_button(
+            "📥 Download Answer",
+            data=st.session_state.final_answer,
+            file_name="chainforge_final_answer.txt",
+            mime="text/plain",
+            use_container_width=True,
+        )
+
+    with regenerate_col:
+        if st.button(
+            "🔄 Regenerate",
+            use_container_width=True,
+        ):
+            st.session_state.final_answer = None
+            st.session_state.stage_results = []
+            st.rerun()
 
     st.markdown("")
 
