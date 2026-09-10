@@ -391,7 +391,7 @@ WORKFLOW_TEMPLATES = {
     },
 }
 
-"Research Assistant": {
+    "Research Assistant": {
         "description": "Research, analyze, organize and verify information before producing a final answer.",
         "stages": [
             {
