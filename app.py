@@ -391,7 +391,57 @@ WORKFLOW_TEMPLATES = {
     },
 }
 
-
+    "Research Assistant": {
+        "description": "Research, analyze, organize and verify information before producing a final answer.",
+        "stages": [
+            {
+                "name": "Understand Request",
+                "purpose": "Understand the research question and requirements.",
+                "instruction": (
+                    "Understand the user's research question, scope, "
+                    "requirements and desired outcome. Identify the key "
+                    "points that need to be addressed."
+                ),
+            },
+            {
+                "name": "Research & Analyze",
+                "purpose": "Analyze the topic and identify important information.",
+                "instruction": (
+                    "Analyze the research question deeply. Identify relevant "
+                    "facts, concepts, relationships, comparisons and evidence "
+                    "needed to produce a useful answer. Do not invent facts."
+                ),
+            },
+            {
+                "name": "Organize Findings",
+                "purpose": "Structure the important findings logically.",
+                "instruction": (
+                    "Organize the findings into a clear and logical structure. "
+                    "Separate key facts, comparisons, evidence and conclusions "
+                    "where appropriate."
+                ),
+            },
+            {
+                "name": "Fact Check",
+                "purpose": "Review accuracy and identify problems.",
+                "instruction": (
+                    "Critically review the findings for factual errors, "
+                    "contradictions, unsupported claims and missing important "
+                    "information. Correct errors where the intended correction "
+                    "is clear. Do not invent information."
+                ),
+            },
+            {
+                "name": "Final Answer",
+                "purpose": "Produce the final research answer.",
+                "instruction": (
+                    "Produce a clear, accurate and well-structured final answer "
+                    "based on the reviewed findings. Follow the selected "
+                    "Output Intent strictly. Do not add unsupported information."
+                ),
+            },
+        ],
+    },
 # =========================================================
 # OUTPUT INTENTS
 # =========================================================
