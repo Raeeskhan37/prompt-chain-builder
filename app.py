@@ -127,31 +127,6 @@ st.markdown(
         margin-top: 0.15rem;
     }
 
-    .final-answer-header {
-        border: 1px solid #dbeafe;
-        border-radius: 14px;
-        padding: 0.85rem 1rem;
-        background: #f8fbff;
-        margin-bottom: 0.8rem;
-    }
-
-    .final-answer-title {
-        font-size: 1.05rem;
-        font-weight: 700;
-        margin-bottom: 0.15rem;
-    }
-
-    .final-answer-subtitle {
-        color: #6b7280;
-        font-size: 0.86rem;
-    }
-
-    .final-answer-meta {
-        color: #6b7280;
-        font-size: 0.82rem;
-        margin-top: 0.35rem;
-    }
-
     .footer {
         text-align: center;
         color: #9ca3af;
@@ -169,6 +144,8 @@ st.markdown(
 # =========================================================
 
 MODEL_NAME = "openai/gpt-oss-120b"
+WHISPER_MODEL = "whisper-large-v3-turbo"
+
 MAX_CONTEXT_CHARS = 6000
 MAX_OUTPUT_TOKENS = 1200
 
@@ -232,12 +209,8 @@ DEFAULT_STAGES = [
             "Perform a rigorous quality check of the previous result. "
             "Verify factual claims, dates, days of the week, numbers, names, "
             "calculations, logical consistency, missing requirements and "
-            "unsupported assumptions. Pay special attention to information "
-            "that could be objectively verified. If an error is found, "
-            "provide the corrected information and explain what must be changed. "
-            "Do not merely say that the result looks good. "
-            "Return a clear corrected version or precise corrections that the "
-            "Final Answer stage can directly use."
+            "unsupported assumptions. If an error is found, correct it. "
+            "Do not invent information."
         ),
     },
     {
@@ -485,6 +458,7 @@ WORKFLOW_TEMPLATES = {
     },
 }
 
+
 # =========================================================
 # OUTPUT INTENTS
 # =========================================================
@@ -617,6 +591,12 @@ if "workflow_running" not in st.session_state:
 if "template_option" not in st.session_state:
     st.session_state.template_option = "Professional"
 
+if "voice_transcript" not in st.session_state:
+    st.session_state.voice_transcript = ""
+
+if "last_audio_id" not in st.session_state:
+    st.session_state.last_audio_id = None
+
 
 # =========================================================
 # HELPER FUNCTIONS
@@ -638,7 +618,6 @@ def call_groq(system_prompt, user_prompt, retries=3):
     for attempt in range(retries):
 
         try:
-
             response = client.chat.completions.create(
                 model=MODEL_NAME,
                 messages=[
@@ -667,6 +646,130 @@ def call_groq(system_prompt, user_prompt, retries=3):
                 raise last_error
 
 
+# =========================================================
+# VOICE FUNCTIONS
+# =========================================================
+
+def transcribe_audio(audio_bytes, language_choice):
+    """
+    Convert recorded audio into text using Groq Whisper.
+    """
+
+    language_map = {
+        "Auto Detect": None,
+        "English": "en",
+        "Urdu": "ur",
+        "Pashto": "ps",
+    }
+
+    selected_language = language_map.get(
+        language_choice
+    )
+
+    audio_file = (
+        "voice_input.wav",
+        audio_bytes,
+    )
+
+    kwargs = {
+        "file": audio_file,
+        "model": WHISPER_MODEL,
+        "response_format": "text",
+    }
+
+    if selected_language:
+        kwargs["language"] = selected_language
+
+    transcription = client.audio.transcriptions.create(
+        **kwargs
+    )
+
+    if isinstance(transcription, str):
+        return transcription.strip()
+
+    if hasattr(transcription, "text"):
+        return transcription.text.strip()
+
+    return str(transcription).strip()
+
+
+def clean_voice_transcript(transcript):
+    """
+    Correct obvious speech-to-text mistakes without changing
+    the user's intended meaning.
+    """
+
+    if not transcript:
+        return ""
+
+    correction_prompt = f"""
+You are an intelligent speech-transcript correction assistant.
+
+The following text was produced by speech-to-text.
+
+Your task is to correct obvious transcription errors and make the
+user's intended request clear.
+
+IMPORTANT RULES:
+
+- Preserve the user's original meaning.
+- Do not change the user's intention.
+- Correct obvious misrecognized words using context.
+- Correct spelling and grammar when appropriate.
+- Handle natural spoken English, Urdu and Pashto.
+- Do not translate unless necessary to understand the request.
+- Do not add information that the user did not provide.
+- Do not invent names, dates, numbers, places or facts.
+- If the transcript is already correct, leave it essentially unchanged.
+- If a word is ambiguous, use the surrounding context to determine
+  the most likely intended meaning.
+- Return ONLY the corrected user request.
+- Do not explain your corrections.
+
+Speech-to-text transcript:
+{transcript}
+"""
+
+    try:
+        corrected = call_groq(
+            """You correct speech-to-text transcripts.
+Preserve the speaker's intended meaning exactly.
+Never invent missing information.""",
+            correction_prompt,
+        )
+
+        if corrected:
+            return corrected.strip()
+
+    except Exception:
+        pass
+
+    return transcript.strip()
+
+
+def process_voice_input(audio_bytes, language_choice):
+    """
+    Full voice pipeline:
+    Audio -> Speech-to-text -> AI correction.
+    """
+
+    transcript = transcribe_audio(
+        audio_bytes,
+        language_choice,
+    )
+
+    if not transcript:
+        raise ValueError(
+            "No speech could be detected in the recording."
+        )
+
+    corrected = clean_voice_transcript(
+        transcript
+    )
+
+    return corrected
+
+
 def count_words(text):
     if not text:
         return 0
@@ -675,13 +778,12 @@ def count_words(text):
 
 
 def compress_final_answer(answer, output_intent, template_name):
-    """
-    If the final answer exceeds the selected word limit,
-    ask the AI to intelligently compress it.
-    """
 
     intent_config = OUTPUT_INTENTS[output_intent]
     max_words = intent_config["max_words"]
+
+    if not answer:
+        return answer
 
     current_words = count_words(answer)
 
@@ -769,6 +871,8 @@ def reset_workflow():
     st.session_state.last_template = "Custom Workflow"
     st.session_state.template_option = "Professional"
     st.session_state.workflow_running = False
+    st.session_state.voice_transcript = ""
+    st.session_state.last_audio_id = None
 
     clear_results()
 
@@ -803,7 +907,6 @@ def move_stage_down(index):
 
 def delete_stage(index):
     if len(st.session_state.stages) <= 2:
-
         st.warning("A workflow must contain at least 2 stages.")
         return
 
@@ -834,7 +937,9 @@ def load_template(template_name):
         for stage in selected_template["stages"]
     ]
 
-    st.session_state.workflow_description = selected_template["description"]
+    st.session_state.workflow_description = (
+        selected_template["description"]
+    )
 
     if template_name == "Custom Workflow":
         st.session_state.workflow_name = "My AI Workflow"
@@ -848,6 +953,7 @@ def load_template(template_name):
 
 
 def get_template_option_label(template_name):
+
     if template_name == "Email Writer":
         return "Email Style"
 
@@ -860,20 +966,34 @@ def get_template_option_label(template_name):
     return None
 
 
-def get_template_option_instruction(template_name, selected_option):
+def get_template_option_instruction(
+    template_name,
+    selected_option,
+):
+
     if template_name == "Email Writer":
-        return EMAIL_STYLES.get(selected_option, "")
+        return EMAIL_STYLES.get(
+            selected_option,
+            "",
+        )
 
     if template_name == "Content Writer":
-        return CONTENT_STYLES.get(selected_option, "")
+        return CONTENT_STYLES.get(
+            selected_option,
+            "",
+        )
 
     if template_name == "Study Assistant":
-        return STUDY_LEVELS.get(selected_option, "")
+        return STUDY_LEVELS.get(
+            selected_option,
+            "",
+        )
 
     return ""
 
 
 def render_execution_tracker(status_placeholder):
+
     total = len(st.session_state.stages)
 
     completed = sum(
@@ -884,13 +1004,19 @@ def render_execution_tracker(status_placeholder):
 
     current_stage = None
 
-    for index, status in enumerate(st.session_state.stage_status):
+    for index, status in enumerate(
+        st.session_state.stage_status
+    ):
 
         if status == "running":
             current_stage = index
             break
 
-    progress_value = completed / total if total else 0
+    progress_value = (
+        completed / total
+        if total
+        else 0
+    )
 
     with status_placeholder.container():
 
@@ -903,7 +1029,9 @@ def render_execution_tracker(status_placeholder):
 
         st.progress(progress_value)
 
-        for index, stage in enumerate(st.session_state.stages):
+        for index, stage in enumerate(
+            st.session_state.stages
+        ):
 
             status = (
                 st.session_state.stage_status[index]
@@ -1012,6 +1140,10 @@ with st.sidebar:
     st.caption(f"Model: `{MODEL_NAME}`")
 
     st.caption(
+        f"Voice model: `{WHISPER_MODEL}`"
+    )
+
+    st.caption(
         f"Maximum output tokens: `{MAX_OUTPUT_TOKENS}`"
     )
 
@@ -1047,7 +1179,9 @@ st.markdown(
 # WORKFLOW TEMPLATE
 # =========================================================
 
-template_options = list(WORKFLOW_TEMPLATES.keys())
+template_options = list(
+    WORKFLOW_TEMPLATES.keys()
+)
 
 template_name = st.selectbox(
     "🧰 Workflow",
@@ -1056,14 +1190,16 @@ template_name = st.selectbox(
         template_options.index(
             st.session_state.last_template
         )
-        if st.session_state.last_template in template_options
+        if st.session_state.last_template
+        in template_options
         else 0
     ),
     disabled=st.session_state.workflow_running,
 )
 
 if (
-    template_name != st.session_state.last_template
+    template_name
+    != st.session_state.last_template
     and not st.session_state.workflow_running
 ):
 
@@ -1116,31 +1252,48 @@ st.markdown(
 metric1, metric2, metric3 = st.columns(3)
 
 with metric1:
-    st.metric("Stages", len(stages))
+    st.metric(
+        "Stages",
+        len(stages),
+    )
 
 with metric2:
-    st.metric("Completed", completed_count)
+    st.metric(
+        "Completed",
+        completed_count,
+    )
 
 with metric3:
-    st.metric("Status", workflow_status)
+    st.metric(
+        "Status",
+        workflow_status,
+    )
 
 
 # =========================================================
 # TEMPLATE-SPECIFIC USER OPTIONS
 # =========================================================
 
-option_label = get_template_option_label(template_name)
+option_label = get_template_option_label(
+    template_name
+)
 
 if option_label:
 
     if template_name == "Email Writer":
-        option_values = list(EMAIL_STYLES.keys())
+        option_values = list(
+            EMAIL_STYLES.keys()
+        )
 
     elif template_name == "Content Writer":
-        option_values = list(CONTENT_STYLES.keys())
+        option_values = list(
+            CONTENT_STYLES.keys()
+        )
 
     else:
-        option_values = list(STUDY_LEVELS.keys())
+        option_values = list(
+            STUDY_LEVELS.keys()
+        )
 
     selected_option = st.selectbox(
         option_label,
@@ -1149,7 +1302,8 @@ if option_label:
             option_values.index(
                 st.session_state.template_option
             )
-            if st.session_state.template_option in option_values
+            if st.session_state.template_option
+            in option_values
             else 0
         ),
         disabled=st.session_state.workflow_running,
@@ -1161,7 +1315,10 @@ if option_label:
         and not st.session_state.workflow_running
     ):
 
-        st.session_state.template_option = selected_option
+        st.session_state.template_option = (
+            selected_option
+        )
+
         clear_results()
 
 
@@ -1186,7 +1343,10 @@ if (
     and not st.session_state.workflow_running
 ):
 
-    st.session_state.output_intent = output_intent
+    st.session_state.output_intent = (
+        output_intent
+    )
+
     clear_results()
 
 st.caption(
@@ -1221,14 +1381,19 @@ if template_name == "Custom Workflow":
                 and not st.session_state.workflow_running
             ):
 
-                st.session_state.workflow_name = workflow_name
+                st.session_state.workflow_name = (
+                    workflow_name
+                )
+
                 clear_results()
 
         with col2:
 
             workflow_description = st.text_input(
                 "Workflow Description",
-                value=st.session_state.workflow_description,
+                value=(
+                    st.session_state.workflow_description
+                ),
                 disabled=st.session_state.workflow_running,
             )
 
@@ -1256,7 +1421,7 @@ with st.expander(
 
     st.caption(
         "Advanced configuration. These stages run automatically "
-        "in the background-style execution flow."
+        "in the sequential execution flow."
     )
 
     for index, stage in enumerate(
@@ -1281,7 +1446,9 @@ with st.expander(
 
         if not st.session_state.workflow_running:
 
-            control1, control2, control3 = st.columns(3)
+            control1, control2, control3 = (
+                st.columns(3)
+            )
 
             with control1:
 
@@ -1348,12 +1515,15 @@ with st.expander(
                 if (
                     new_name != stage["name"]
                     or new_purpose != stage["purpose"]
-                    or new_instruction != stage["instruction"]
+                    or new_instruction
+                    != stage["instruction"]
                 ):
 
                     stage["name"] = new_name
                     stage["purpose"] = new_purpose
-                    stage["instruction"] = new_instruction
+                    stage["instruction"] = (
+                        new_instruction
+                    )
 
                     clear_results()
 
@@ -1371,14 +1541,117 @@ with st.expander(
 
         else:
 
-            st.info("Maximum of 5 stages allowed.")
+            st.info(
+                "Maximum of 5 stages allowed."
+            )
+
+
+# =========================================================
+# VOICE INPUT
+# =========================================================
+
+st.markdown("## 🎤 Voice Input")
+
+voice_col1, voice_col2 = st.columns(
+    [2, 1]
+)
+
+with voice_col1:
+
+    voice_language = st.selectbox(
+        "Speech Language",
+        [
+            "Auto Detect",
+            "English",
+            "Urdu",
+            "Pashto",
+        ],
+        disabled=st.session_state.workflow_running,
+    )
+
+with voice_col2:
+
+    st.caption(
+        "Speak naturally. The AI will correct obvious "
+        "speech-to-text mistakes before processing."
+    )
+
+
+audio_value = st.audio_input(
+    "🎙️ Record your request",
+    disabled=st.session_state.workflow_running,
+)
+
+
+# =========================================================
+# PROCESS NEW AUDIO
+# =========================================================
+
+if (
+    audio_value is not None
+    and not st.session_state.workflow_running
+):
+
+    audio_bytes = audio_value.getvalue()
+
+    audio_id = hash(audio_bytes)
+
+    if (
+        audio_id
+        != st.session_state.last_audio_id
+    ):
+
+        with st.spinner(
+            "🎤 Converting your voice to text..."
+        ):
+
+            try:
+
+                corrected_text = process_voice_input(
+                    audio_bytes,
+                    voice_language,
+                )
+
+                st.session_state.voice_transcript = (
+                    corrected_text
+                )
+
+                st.session_state.last_audio_id = (
+                    audio_id
+                )
+
+                st.session_state.last_prompt = (
+                    corrected_text
+                )
+
+                st.session_state.user_prompt_input = (
+                    corrected_text
+                )
+
+                clear_results()
+
+                st.success(
+                    "✅ Voice converted and understood successfully."
+                )
+
+            except Exception as error:
+
+                st.session_state.last_audio_id = (
+                    audio_id
+                )
+
+                st.error(
+                    f"❌ Voice processing failed: {error}"
+                )
 
 
 # =========================================================
 # USER REQUEST
 # =========================================================
 
-st.markdown("## 📝 What would you like to process?")
+st.markdown(
+    "## 📝 What would you like to process?"
+)
 
 placeholder_text = (
     "Example: Write an email requesting leave from my manager "
@@ -1392,12 +1665,23 @@ placeholder_text = (
     "intelligence on education."
     if template_name == "Content Writer"
     else
+    "Example: Research the benefits and risks of artificial intelligence."
+    if template_name == "Research Assistant"
+    else
     "Enter the request you want your workflow to process."
 )
 
+
+default_request = (
+    st.session_state.voice_transcript
+    if st.session_state.voice_transcript
+    else st.session_state.last_prompt
+)
+
+
 user_prompt = st.text_area(
     "Describe your request",
-    value=st.session_state.last_prompt,
+    value=default_request,
     height=150,
     placeholder=placeholder_text,
     key="user_prompt_input",
@@ -1428,6 +1712,9 @@ if not st.session_state.workflow_running:
     elif template_name == "Study Assistant":
         button_text = "✨ Generate Lesson"
 
+    elif template_name == "Research Assistant":
+        button_text = "🔎 Run Research Workflow"
+
     elif template_name == "Custom Workflow":
         button_text = "▶️ Run Workflow"
 
@@ -1454,7 +1741,7 @@ if run_clicked:
     if not user_prompt.strip():
 
         st.warning(
-            "Please enter your request before generating a result."
+            "Please enter or record your request before generating a result."
         )
 
     elif len(st.session_state.stages) < 2:
@@ -1465,7 +1752,9 @@ if run_clicked:
 
     else:
 
-        st.session_state.last_prompt = user_prompt
+        st.session_state.last_prompt = (
+            user_prompt
+        )
 
         total_stages = len(
             st.session_state.stages
@@ -1487,7 +1776,9 @@ if run_clicked:
 
         st.session_state.workflow_running = True
 
-        status_placeholder = execution_container.empty()
+        status_placeholder = (
+            execution_container.empty()
+        )
 
         render_execution_tracker(
             status_placeholder
@@ -1497,7 +1788,9 @@ if run_clicked:
             st.session_state.output_intent
         ]
 
-        output_instruction = output_config["instruction"]
+        output_instruction = (
+            output_config["instruction"]
+        )
 
         template_option_instruction = (
             get_template_option_instruction(
@@ -1519,7 +1812,9 @@ if run_clicked:
 
             stage_number = index + 1
 
-            st.session_state.stage_status[index] = "running"
+            st.session_state.stage_status[
+                index
+            ] = "running"
 
             render_execution_tracker(
                 status_placeholder
@@ -1584,7 +1879,9 @@ and the selected workflow options.
 
             if index == total_stages - 1:
 
-                max_words = output_config["max_words"]
+                max_words = output_config[
+                    "max_words"
+                ]
 
                 final_stage_instruction = f"""
 FINAL OUTPUT REQUIREMENTS:
@@ -1785,16 +2082,26 @@ Produce useful output that the next stage can directly use.
 
 
 # =========================================================
-# FINAL ANSWER — POLISHED RESULT SCREEN
+# FINAL ANSWER
 # =========================================================
-if st.session_state.final_answer:
-    st.markdown("---")
-    st.markdown("## 🎯 Final Answer")
 
-    answer_words = count_words(st.session_state.final_answer)
+if st.session_state.final_answer:
+
+    st.markdown("---")
+
+    st.markdown(
+        "## 🎯 Final Answer"
+    )
+
+    answer_words = count_words(
+        st.session_state.final_answer
+    )
 
     with st.container(border=True):
-        st.success("✅ Workflow Completed Successfully")
+
+        st.success(
+            "✅ Workflow Completed Successfully"
+        )
 
         st.caption(
             f"{st.session_state.workflow_name} • "
@@ -1803,13 +2110,18 @@ if st.session_state.final_answer:
             f"{answer_words} words"
         )
 
-        st.markdown(st.session_state.final_answer)
+        st.markdown(
+            st.session_state.final_answer
+        )
 
     st.markdown("")
 
-    download_col, regenerate_col = st.columns(2)
+    download_col, regenerate_col = (
+        st.columns(2)
+    )
 
     with download_col:
+
         st.download_button(
             "📥 Download Answer",
             data=st.session_state.final_answer,
@@ -1819,39 +2131,12 @@ if st.session_state.final_answer:
         )
 
     with regenerate_col:
+
         if st.button(
             "🔄 Regenerate",
             use_container_width=True,
+            key="final_answer_regenerate",
         ):
-            st.session_state.final_answer = None
-            st.session_state.stage_results = []
-            st.rerun()
-
-    st.markdown("")
-
-    # -----------------------------------------------------
-    # ACTION BUTTONS
-    # -----------------------------------------------------
-
-    download_col, regenerate_col = st.columns(2)
-
-    with download_col:
-
-        st.download_button(
-            label="⬇️ Download TXT",
-            data=st.session_state.final_answer,
-            file_name="workflow_result.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
-
-    with regenerate_col:
-
-        if st.button(
-    "🔄 Regenerate",
-    use_container_width=True,
-    key="final_answer_regenerate",
-):
 
             st.session_state.run_completed = False
             st.session_state.final_answer = ""
@@ -1867,7 +2152,9 @@ if st.session_state.final_answer:
 
 if (
     st.session_state.stage_outputs
-    and any(st.session_state.stage_outputs)
+    and any(
+        st.session_state.stage_outputs
+    )
 ):
 
     with st.expander(
@@ -1876,8 +2163,8 @@ if (
     ):
 
         st.caption(
-            "Intermediate results are normally hidden to keep "
-            "the interface clean."
+            "Intermediate results are normally hidden "
+            "to keep the interface clean."
         )
 
         for index, output in enumerate(
@@ -1889,7 +2176,10 @@ if (
 
             stage_name = (
                 st.session_state.stages[index]["name"]
-                if index < len(st.session_state.stages)
+                if index
+                < len(
+                    st.session_state.stages
+                )
                 else f"Stage {index + 1}"
             )
 
@@ -1912,7 +2202,9 @@ if st.session_state.run_completed:
         expanded=False,
     ):
 
-        summary_col1, summary_col2 = st.columns(2)
+        summary_col1, summary_col2 = (
+            st.columns(2)
+        )
 
         with summary_col1:
 
