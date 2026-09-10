@@ -355,8 +355,11 @@ WORKFLOW_TEMPLATES = {
                 "purpose": "Create useful learning material.",
                 "instruction": (
                     "Create learner-friendly learning material using the "
-                    "reviewed explanation. Include examples, key points "
-                    "and a concise summary when appropriate."
+                    "reviewed explanation. Follow the selected Output Intent "
+                    "strictly. If Quick Answer is selected, provide only a "
+                    "very short explanation with the essential points. Do not "
+                    "create a long lesson, cheat-sheet, extended background "
+                    "section or unnecessary summary."
                 ),
             },
         ],
@@ -371,37 +374,48 @@ WORKFLOW_TEMPLATES = {
 OUTPUT_INTENTS = {
     "⚡ Quick Answer": {
         "description": "Short and direct answer with only the essential information.",
+        "max_words": 120,
         "instruction": (
-            "Keep the final answer concise. Give only the essential "
-            "information needed to answer the user's request. Avoid "
-            "unnecessary background, long explanations and excessive examples."
+            "STRICT LENGTH REQUIREMENT: The final answer must be no more than "
+            "120 words. Give only the essential information needed to answer "
+            "the user's request. Prefer 3–6 short bullets or 1–2 short "
+            "paragraphs. Do not use tables. Do not provide long examples. "
+            "Do not add unnecessary background, extended explanations, repeated "
+            "summaries, or extra sections."
         ),
     },
 
     "🙂 Simple Explanation": {
         "description": "Easy-to-understand explanation for a general user or beginner.",
+        "max_words": 220,
         "instruction": (
-            "Explain the answer in simple, clear language suitable for a "
-            "beginner. Avoid unnecessary technical terminology. Use a short "
-            "example when it improves understanding."
+            "STRICT LENGTH REQUIREMENT: The final answer should normally stay "
+            "within 220 words. Explain the answer in simple, clear language "
+            "suitable for a beginner. Avoid unnecessary technical terminology. "
+            "Use no more than one short example when it improves understanding. "
+            "Avoid unnecessary sections or repetition."
         ),
     },
 
     "📚 Detailed Explanation": {
         "description": "A well-structured explanation with useful details and examples.",
+        "max_words": 500,
         "instruction": (
-            "Provide a well-structured and informative answer. Include the "
-            "important details, explanations and examples needed for good "
-            "understanding, while avoiding unnecessary complexity."
+            "Keep the final answer within approximately 500 words. Provide a "
+            "well-structured and informative answer. Include important details, "
+            "explanations and useful examples while avoiding unnecessary repetition "
+            "or complexity."
         ),
     },
 
     "🔎 Comprehensive Analysis": {
         "description": "Deep and thorough treatment of the user's request.",
+        "max_words": 900,
         "instruction": (
-            "Provide a comprehensive and thorough answer. Cover relevant "
-            "details, important considerations, examples, limitations and "
-            "supporting explanations. Do not omit important information."
+            "Keep the final answer within approximately 900 words unless the "
+            "user explicitly requires more. Provide a comprehensive and "
+            "thorough answer covering relevant details, important considerations, "
+            "examples, limitations and supporting explanations."
         ),
     },
 }
@@ -530,6 +544,85 @@ def call_groq(system_prompt, user_prompt, retries=3):
                 time.sleep(2 * (attempt + 1))
             else:
                 raise last_error
+
+
+def count_words(text):
+    if not text:
+        return 0
+
+    return len(text.split())
+
+
+def compress_final_answer(answer, output_intent, template_name):
+    """
+    If the final answer exceeds the selected word limit,
+    ask the AI to intelligently compress it.
+    """
+
+    intent_config = OUTPUT_INTENTS[output_intent]
+    max_words = intent_config["max_words"]
+
+    current_words = count_words(answer)
+
+    if current_words <= max_words:
+        return answer
+
+    compression_prompt = f"""
+Compress the following final answer for the user.
+
+Selected Output Intent:
+{output_intent}
+
+Workflow:
+{template_name}
+
+STRICT REQUIREMENT:
+The final answer MUST be no more than {max_words} words.
+
+Preserve:
+- The user's original request and intent
+- Important facts
+- Correct information
+- Essential instructions
+- Important names, dates, numbers and details
+
+Remove:
+- Repetition
+- Unnecessary background
+- Long examples
+- Extra explanations
+- Redundant summaries
+- Unnecessary headings
+
+Do not introduce new facts.
+
+Return ONLY the compressed final answer.
+
+Original Final Answer:
+{answer}
+"""
+
+    try:
+
+        compressed = call_groq(
+            (
+                "You are a professional AI editor. "
+                "Your task is to shorten an answer without losing "
+                "important meaning or factual accuracy."
+            ),
+            compression_prompt,
+        )
+
+        if compressed and count_words(compressed) <= max_words:
+            return compressed.strip()
+
+        if compressed:
+            return compressed.strip()
+
+    except Exception:
+        pass
+
+    return answer
 
 
 def create_stage(name="New Stage"):
@@ -1290,9 +1383,11 @@ if run_clicked:
             status_placeholder
         )
 
-        output_instruction = OUTPUT_INTENTS[
+        output_config = OUTPUT_INTENTS[
             st.session_state.output_intent
-        ]["instruction"]
+        ]
+
+        output_instruction = output_config["instruction"]
 
         template_option_instruction = (
             get_template_option_instruction(
@@ -1372,6 +1467,50 @@ and the selected workflow options.
 
 
             # ---------------------------------------------
+            # FINAL STAGE CONSTRAINT
+            # ---------------------------------------------
+
+            final_stage_instruction = ""
+
+            if index == total_stages - 1:
+
+                max_words = output_config["max_words"]
+
+                final_stage_instruction = f"""
+FINAL OUTPUT REQUIREMENTS:
+
+The response produced by this stage will be shown directly
+to the user.
+
+The selected Answer Style is:
+{st.session_state.output_intent}
+
+STRICT MAXIMUM LENGTH:
+The final answer must not exceed {max_words} words.
+
+Do not ignore this limit even if earlier stages contain much
+more information.
+
+Use only the information necessary to satisfy the user's request.
+
+Do not copy the full previous stage output.
+
+Do not add unnecessary background information.
+
+Do not add repeated summaries.
+
+Do not add a long introduction.
+
+Do not create unnecessary sections.
+
+If Quick Answer is selected, prefer a short direct answer,
+normally 3–6 bullets or 1–2 short paragraphs.
+
+Return ONLY the final user-facing answer.
+"""
+
+
+            # ---------------------------------------------
             # SYSTEM PROMPT
             # ---------------------------------------------
 
@@ -1408,6 +1547,8 @@ Selected Output Intent:
 Output Intent Instructions:
 {output_instruction}
 
+{final_stage_instruction}
+
 Your role is to complete ONLY the current stage effectively.
 
 The output of this stage will be passed to the next stage.
@@ -1416,7 +1557,7 @@ The selected workflow option controls the style, tone or
 level appropriate for this workflow.
 
 The selected Output Intent controls the desired depth,
-complexity and presentation style of the eventual answer.
+complexity, length and presentation style of the final answer.
 
 Follow the stage instructions carefully.
 
@@ -1448,6 +1589,19 @@ Produce useful output that the next stage can directly use.
 
                     raise ValueError(
                         "The AI returned an empty response."
+                    )
+
+
+                # -----------------------------------------
+                # ENFORCE FINAL ANSWER LENGTH
+                # -----------------------------------------
+
+                if index == total_stages - 1:
+
+                    output = compress_final_answer(
+                        output,
+                        st.session_state.output_intent,
+                        template_name,
                     )
 
 
