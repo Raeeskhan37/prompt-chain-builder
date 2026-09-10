@@ -1755,9 +1755,10 @@ if st.session_state.final_answer:
     with regenerate_col:
 
         if st.button(
-            "🔄 Regenerate",
-            use_container_width=True,
-        ):
+    "🔄 Regenerate",
+    use_container_width=True,
+    key="final_answer_regenerate",
+):
 
             st.session_state.run_completed = False
             st.session_state.final_answer = ""
