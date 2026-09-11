@@ -1178,23 +1178,20 @@ with st.sidebar:
     st.markdown("### How It Works")
 
     st.markdown(
-        """
-        **1. Choose Template**  
-        Select a workflow type.
+    """
+    **1. Choose Workflow**  
+    Select what you want ChainForge to do.
 
-        **2. Configure Stages**  
-        Customize the AI workflow if required.
+    **2. Provide Information**  
+    Type or speak your request naturally.
 
-        **3. Provide Information**  
-        Type or speak naturally.
+    **3. Run Workflow**  
+    ChainForge processes your request through multiple AI stages automatically.
 
-        **4. Run Workflow**  
-        AI processes the request stage by stage.
-
-        **5. Get Final Answer**  
-        The final stage produces the completed result.
-        """
-    )
+    **4. Get Final Answer**  
+    The final stage produces the completed result.
+    """
+)
 
     st.markdown("---")
 
@@ -1516,142 +1513,6 @@ if template_name == "Custom Workflow":
                 )
 
                 clear_results()
-
-
-# =========================================================
-# WORKFLOW CONFIGURATION
-# =========================================================
-
-with st.expander(
-    f"🧩 Configure Workflow Stages ({len(stages)} stages)",
-    expanded=False,
-):
-
-    st.caption(
-        "Advanced configuration. These stages run automatically "
-        "in the sequential execution flow."
-    )
-
-    for index, stage in enumerate(
-        st.session_state.stages
-    ):
-
-        stage_number = index + 1
-
-        st.markdown(
-            f"""
-            <div class="workflow-card">
-                <div class="workflow-card-title">
-                    {stage_number}. {stage['name']}
-                </div>
-                <div class="workflow-card-purpose">
-                    {stage['purpose']}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        if not st.session_state.workflow_running:
-
-            control1, control2, control3 = (
-                st.columns(3)
-            )
-
-            with control1:
-
-                if st.button(
-                    "⬆️ Move Up",
-                    key=f"up_{stage['id']}",
-                    disabled=(index == 0),
-                    use_container_width=True,
-                ):
-
-                    move_stage_up(index)
-                    st.rerun()
-
-            with control2:
-
-                if st.button(
-                    "⬇️ Move Down",
-                    key=f"down_{stage['id']}",
-                    disabled=(
-                        index == len(stages) - 1
-                    ),
-                    use_container_width=True,
-                ):
-
-                    move_stage_down(index)
-                    st.rerun()
-
-            with control3:
-
-                if st.button(
-                    "🗑️ Delete",
-                    key=f"delete_{stage['id']}",
-                    use_container_width=True,
-                ):
-
-                    delete_stage(index)
-                    st.rerun()
-
-            with st.expander(
-                f"✏️ Edit Stage {stage_number}",
-                expanded=False,
-            ):
-
-                new_name = st.text_input(
-                    "Stage Name",
-                    value=stage["name"],
-                    key=f"name_{stage['id']}",
-                )
-
-                new_purpose = st.text_area(
-                    "Stage Purpose",
-                    value=stage["purpose"],
-                    key=f"purpose_{stage['id']}",
-                    height=80,
-                )
-
-                new_instruction = st.text_area(
-                    "AI Instruction",
-                    value=stage["instruction"],
-                    key=f"instruction_{stage['id']}",
-                    height=140,
-                )
-
-                if (
-                    new_name != stage["name"]
-                    or new_purpose != stage["purpose"]
-                    or new_instruction
-                    != stage["instruction"]
-                ):
-
-                    stage["name"] = new_name
-                    stage["purpose"] = new_purpose
-                    stage["instruction"] = (
-                        new_instruction
-                    )
-
-                    clear_results()
-
-    if not st.session_state.workflow_running:
-
-        if len(st.session_state.stages) < 5:
-
-            if st.button(
-                "➕ Add Stage",
-                use_container_width=True,
-            ):
-
-                add_stage()
-                st.rerun()
-
-        else:
-
-            st.info(
-                "Maximum of 5 stages allowed."
-            )
 
 
 # =========================================================
