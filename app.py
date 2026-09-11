@@ -731,7 +731,12 @@ def clean_output_text(text):
     text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
+def create_txt_file(text):
+    """Create a UTF-8 TXT file from the final answer."""
 
+    cleaned_text = clean_output_text(text)
+
+    return cleaned_text.encode("utf-8")
 
 def create_docx_file(text, template_name="AI Generated Document"):
     """
