@@ -647,16 +647,15 @@ if "user_prompt_input" not in st.session_state:
 # =========================================================
 
 def clean_output_text(text):
-    """
-    Fix common UTF-8 / Unicode display problems and
-    make AI-generated text cleaner for documents.
-    """
+"""Clean AI output and fix common encoding/Unicode formatting problems."""
 
-    if not text:
+    if text is None:
         return ""
 
-    # Fix common mojibake sequences
-        replacements = {
+    text = str(text)
+
+    # Common mojibake / encoding problems
+    replacements = {
         "â€‘": "-",
         "â€’": "-",
         "â€“": "-",
@@ -672,40 +671,66 @@ def clean_output_text(text):
         "â€¢": "•",
         "ðŸ“„": "",
         "ðŸŽ¯": "",
+        "ðŸ”": "",
+        "ðŸ’¡": "",
+        "ðŸ‘‰": "",
+        "ðŸ‘Œ": "",
+        "ðŸš€": "",
     }
 
+    # Apply replacements
     for bad, good in replacements.items():
         text = text.replace(bad, good)
 
-    text = unicodedata.normalize("NFC", text)
-
+    # Normal spaces
     text = text.replace("\u00A0", " ")
     text = text.replace("\u202F", " ")
+    text = text.replace("\u2007", " ")
+    text = text.replace("\u2009", " ")
 
+    # Convert unusual hyphens/dashes to normal ASCII hyphen
     for char in [
         "\u2010",
         "\u2011",
         "\u2012",
         "\u2013",
         "\u2014",
+        "\u2015",
         "\u2212",
     ]:
         text = text.replace(char, "-")
 
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    # Remove invisible characters
+    for char in [
+        "\u200B",
+        "\u200C",
+        "\u200D",
+        "\u2060",
+        "\uFEFF",
+    ]:
+        text = text.replace(char, "")
+
+    # Normalize Unicode
+    text = unicodedata.normalize("NFC", text)
+
+    # Normalize line endings
+    text = text.replace("\r\n", "\n")
+    text = text.replace("\r", "\n")
+
+    # Clean spaces on each line
+    lines = []
+
+    for line in text.split("\n"):
+        line = line.rstrip()
+        line = re.sub(r"[ \t]+", " ", line)
+        lines.append(line)
+
+    text = "\n".join(lines)
+
+    # Remove excessive blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
 
     return text.strip()
-
-
-def create_txt_file(text):
-    """
-    Create clean UTF-8 TXT output.
-    """
-
-    cleaned = clean_output_text(text)
-
-    return cleaned.encode("utf-8")
 
 
 def create_docx_file(text, template_name="AI Generated Document"):
