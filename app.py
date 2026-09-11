@@ -656,7 +656,7 @@ def clean_output_text(text):
         return ""
 
     # Fix common mojibake sequences
-    replacements = {
+        replacements = {
         "â€‘": "-",
         "â€’": "-",
         "â€“": "-",
@@ -677,20 +677,22 @@ def clean_output_text(text):
     for bad, good in replacements.items():
         text = text.replace(bad, good)
 
-    # Normalize Unicode
     text = unicodedata.normalize("NFC", text)
 
-    # Replace non-breaking spaces
     text = text.replace("\u00A0", " ")
+    text = text.replace("\u202F", " ")
 
-    # Replace unusual hyphens with normal hyphen
-    for char in ["\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2212"]:
+    for char in [
+        "\u2010",
+        "\u2011",
+        "\u2012",
+        "\u2013",
+        "\u2014",
+        "\u2212",
+    ]:
         text = text.replace(char, "-")
 
-    # Clean excessive spaces
     text = re.sub(r"[ \t]+", " ", text)
-
-    # Clean excessive blank lines
     text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
 
     return text.strip()
