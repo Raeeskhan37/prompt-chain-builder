@@ -647,7 +647,7 @@ if "user_prompt_input" not in st.session_state:
 # =========================================================
 
 def clean_output_text(text):
-"""Clean AI output and fix common encoding/Unicode formatting problems."""
+    """Clean AI output and fix common encoding/Unicode formatting problems."""
 
     if text is None:
         return ""
