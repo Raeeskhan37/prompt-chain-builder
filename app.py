@@ -5,6 +5,16 @@ import uuid
 import streamlit as st
 from groq import Groq
 
+import io
+import re
+import unicodedata
+
+from docx import Document
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.section import WD_SECTION
+from fpdf import FPDF
+
 
 # =========================================================
 # PAGE CONFIGURATION
@@ -632,7 +642,302 @@ if "last_audio_id" not in st.session_state:
 if "user_prompt_input" not in st.session_state:
     st.session_state.user_prompt_input = ""
 
+# =========================================================
+# DOWNLOAD / DOCUMENT FORMATTING
+# =========================================================
 
+def clean_output_text(text):
+    """
+    Fix common UTF-8 / Unicode display problems and
+    make AI-generated text cleaner for documents.
+    """
+
+    if not text:
+        return ""
+
+    # Fix common mojibake sequences
+    replacements = {
+        "â€‘": "-",
+        "â€’": "-",
+        "â€“": "-",
+        "â€”": "-",
+        "â€¯": " ",
+        "â€œ": '"',
+        "â€": '"',
+        "â€˜": "'",
+        "â€™": "'",
+        "â€¦": "...",
+        "Â ": " ",
+        "Â": "",
+        "â€¢": "•",
+        "ðŸ“„": "",
+        "ðŸŽ¯": "",
+    }
+
+    for bad, good in replacements.items():
+        text = text.replace(bad, good)
+
+    # Normalize Unicode
+    text = unicodedata.normalize("NFC", text)
+
+    # Replace non-breaking spaces
+    text = text.replace("\u00A0", " ")
+
+    # Replace unusual hyphens with normal hyphen
+    for char in ["\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2212"]:
+        text = text.replace(char, "-")
+
+    # Clean excessive spaces
+    text = re.sub(r"[ \t]+", " ", text)
+
+    # Clean excessive blank lines
+    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+
+    return text.strip()
+
+
+def create_txt_file(text):
+    """
+    Create clean UTF-8 TXT output.
+    """
+
+    cleaned = clean_output_text(text)
+
+    return cleaned.encode("utf-8")
+
+
+def create_docx_file(text, template_name="AI Generated Document"):
+    """
+    Create a professional Word document.
+    """
+
+    cleaned = clean_output_text(text)
+
+    document = Document()
+
+    # Page margins
+    section = document.sections[0]
+    section.top_margin = Inches(0.75)
+    section.bottom_margin = Inches(0.75)
+    section.left_margin = Inches(0.85)
+    section.right_margin = Inches(0.85)
+
+    # Normal font
+    styles = document.styles
+
+    normal_style = styles["Normal"]
+    normal_style.font.name = "Arial"
+    normal_style.font.size = Pt(11)
+
+    # Document title
+    title = document.add_paragraph()
+
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    title_run = title.add_run(template_name)
+    title_run.bold = True
+    title_run.font.size = Pt(16)
+
+    # Separator
+    separator = document.add_paragraph()
+    separator.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    separator_run = separator.add_run("─" * 45)
+    separator_run.font.size = Pt(9)
+
+    # Process lines
+    lines = cleaned.splitlines()
+
+    for line in lines:
+
+        line = line.strip()
+
+        if not line:
+            document.add_paragraph()
+            continue
+
+        # Subject line
+        if line.lower().startswith("subject:"):
+
+            paragraph = document.add_paragraph()
+
+            subject_label, subject_text = line.split(
+                ":", 1
+            )
+
+            run1 = paragraph.add_run(
+                subject_label.strip() + ": "
+            )
+            run1.bold = True
+
+            run2 = paragraph.add_run(
+                subject_text.strip()
+            )
+            run2.bold = True
+
+        # Headings / markdown headings
+        elif line.startswith("#"):
+
+            heading_text = line.lstrip("#").strip()
+
+            paragraph = document.add_paragraph()
+
+            run = paragraph.add_run(
+                heading_text
+            )
+
+            run.bold = True
+            run.font.size = Pt(13)
+
+        # Bullet points
+        elif line.startswith(("-", "*", "•")):
+
+            bullet_text = line[1:].strip()
+
+            paragraph = document.add_paragraph(
+                style="List Bullet"
+            )
+
+            paragraph.add_run(
+                bullet_text
+            )
+
+        else:
+
+            paragraph = document.add_paragraph()
+
+            paragraph.paragraph_format.space_after = Pt(6)
+            paragraph.paragraph_format.line_spacing = 1.15
+
+            paragraph.add_run(line)
+
+    output = io.BytesIO()
+
+    document.save(output)
+
+    output.seek(0)
+
+    return output.getvalue()
+
+
+def create_pdf_file(text, template_name="AI Generated Document"):
+    """
+    Create a clean professional PDF.
+    """
+
+    cleaned = clean_output_text(text)
+
+    pdf = FPDF()
+
+    pdf.set_auto_page_break(
+        auto=True,
+        margin=15
+    )
+
+    pdf.add_page()
+
+    # Title
+    pdf.set_font(
+        "Helvetica",
+        "B",
+        16
+    )
+
+    pdf.cell(
+        0,
+        10,
+        template_name,
+        new_x="LMARGIN",
+        new_y="NEXT",
+        align="C",
+    )
+
+    pdf.ln(4)
+
+    pdf.set_draw_color(
+        180,
+        180,
+        180
+    )
+
+    pdf.line(
+        15,
+        pdf.get_y(),
+        195,
+        pdf.get_y()
+    )
+
+    pdf.ln(8)
+
+    lines = cleaned.splitlines()
+
+    for line in lines:
+
+        line = line.strip()
+
+        if not line:
+            pdf.ln(4)
+            continue
+
+        # Subject
+        if line.lower().startswith("subject:"):
+
+            subject = line.split(
+                ":",
+                1
+            )[1].strip()
+
+            pdf.set_font(
+                "Helvetica",
+                "B",
+                11
+            )
+
+            pdf.multi_cell(
+                0,
+                7,
+                "Subject: " + subject
+            )
+
+            pdf.ln(3)
+
+        # Heading
+        elif line.startswith("#"):
+
+            heading = line.lstrip("#").strip()
+
+            pdf.set_font(
+                "Helvetica",
+                "B",
+                13
+            )
+
+            pdf.multi_cell(
+                0,
+                8,
+                heading
+            )
+
+            pdf.ln(2)
+
+        else:
+
+            pdf.set_font(
+                "Helvetica",
+                "",
+                11
+            )
+
+            pdf.multi_cell(
+                0,
+                7,
+                line
+            )
+
+            pdf.ln(1)
+
+    return bytes(pdf.output())
+    
 # =========================================================
 # HELPER FUNCTIONS
 # =========================================================
@@ -2168,19 +2473,86 @@ if st.session_state.final_answer:
 
     st.markdown("")
 
-    download_col, regenerate_col = (
-        st.columns(2)
+# =========================================================
+# DOWNLOAD OPTIONS
+# =========================================================
+
+st.markdown("### 📥 Download Your Answer")
+
+cleaned_answer = clean_output_text(
+    st.session_state.final_answer
+)
+
+docx_data = create_docx_file(
+    cleaned_answer,
+    template_name=template_name,
+)
+
+pdf_data = create_pdf_file(
+    cleaned_answer,
+    template_name=template_name,
+)
+
+txt_data = create_txt_file(
+    cleaned_answer
+)
+
+download_col1, download_col2, download_col3 = st.columns(3)
+
+with download_col1:
+
+    st.download_button(
+        "📄 Download Word",
+        data=docx_data,
+        file_name="chainforge_answer.docx",
+        mime=(
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        ),
+        use_container_width=True,
     )
 
-    with download_col:
+with download_col2:
 
-        st.download_button(
-            "📥 Download Answer",
-            data=st.session_state.final_answer,
-            file_name="chainforge_final_answer.txt",
-            mime="text/plain",
-            use_container_width=True,
-        )
+    st.download_button(
+        "📕 Download PDF",
+        data=pdf_data,
+        file_name="chainforge_answer.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
+
+with download_col3:
+
+    st.download_button(
+        "📝 Download TXT",
+        data=txt_data,
+        file_name="chainforge_answer.txt",
+        mime="text/plain",
+        use_container_width=True,
+    )
+
+st.caption(
+    "Word is recommended for letters and emails. "
+    "PDF is recommended for a professional final document."
+)
+
+download_col, regenerate_col = st.columns(2)
+
+with regenerate_col:
+
+    if st.button(
+        "🔄 Regenerate",
+        use_container_width=True,
+        key="final_answer_regenerate",
+    ):
+
+        st.session_state.run_completed = False
+        st.session_state.final_answer = ""
+        st.session_state.stage_status = []
+        st.session_state.stage_outputs = []
+
+        st.rerun()
 
     with regenerate_col:
 
