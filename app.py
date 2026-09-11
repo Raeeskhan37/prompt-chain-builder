@@ -819,10 +819,13 @@ def create_docx_file(text, template_name="AI Generated Document"):
 
     return output.getvalue()
 
-
 def create_pdf_file(text, template_name="AI Generated Document"):
     """
-    Create a clean professional PDF.
+    Create a Unicode-compatible professional PDF.
+
+    Uses DejaVu Sans instead of Helvetica so that Unicode
+    characters such as smart quotes, Urdu, Pashto and other
+    supported scripts do not cause FPDF encoding errors.
     """
 
     cleaned = clean_output_text(text)
@@ -834,11 +837,67 @@ def create_pdf_file(text, template_name="AI Generated Document"):
         margin=15
     )
 
+    # -----------------------------------------------------
+    # Locate Unicode font
+    # -----------------------------------------------------
+
+    possible_fonts = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ]
+
+    regular_font = None
+    bold_font = None
+
+    for font_path in possible_fonts:
+        if os.path.exists(font_path):
+            if "Bold" in font_path:
+                bold_font = font_path
+            else:
+                regular_font = font_path
+
+    # -----------------------------------------------------
+    # Register Unicode fonts
+    # -----------------------------------------------------
+
+    if regular_font and bold_font:
+
+        pdf.add_font(
+            "DejaVu",
+            "",
+            regular_font
+        )
+
+        pdf.add_font(
+            "DejaVu",
+            "B",
+            bold_font
+        )
+
+        font_name = "DejaVu"
+
+    else:
+        # Fallback if the server does not have DejaVu.
+        # Clean unsupported characters before using Helvetica.
+        font_name = "Helvetica"
+
+        cleaned = cleaned.encode(
+            "latin-1",
+            errors="replace"
+        ).decode("latin-1")
+
+    # -----------------------------------------------------
+    # Page
+    # -----------------------------------------------------
+
     pdf.add_page()
 
+    # -----------------------------------------------------
     # Title
+    # -----------------------------------------------------
+
     pdf.set_font(
-        "Helvetica",
+        font_name,
         "B",
         16
     )
@@ -846,13 +905,17 @@ def create_pdf_file(text, template_name="AI Generated Document"):
     pdf.cell(
         0,
         10,
-        template_name,
+        clean_output_text(template_name),
         new_x="LMARGIN",
         new_y="NEXT",
         align="C",
     )
 
     pdf.ln(4)
+
+    # -----------------------------------------------------
+    # Separator
+    # -----------------------------------------------------
 
     pdf.set_draw_color(
         180,
@@ -869,6 +932,10 @@ def create_pdf_file(text, template_name="AI Generated Document"):
 
     pdf.ln(8)
 
+    # -----------------------------------------------------
+    # Content
+    # -----------------------------------------------------
+
     lines = cleaned.splitlines()
 
     for line in lines:
@@ -879,7 +946,10 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             pdf.ln(4)
             continue
 
+        # -----------------------------------------------
         # Subject
+        # -----------------------------------------------
+
         if line.lower().startswith("subject:"):
 
             subject = line.split(
@@ -888,7 +958,7 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             )[1].strip()
 
             pdf.set_font(
-                "Helvetica",
+                font_name,
                 "B",
                 11
             )
@@ -901,13 +971,16 @@ def create_pdf_file(text, template_name="AI Generated Document"):
 
             pdf.ln(3)
 
-        # Heading
+        # -----------------------------------------------
+        # Markdown heading
+        # -----------------------------------------------
+
         elif line.startswith("#"):
 
             heading = line.lstrip("#").strip()
 
             pdf.set_font(
-                "Helvetica",
+                font_name,
                 "B",
                 13
             )
@@ -920,10 +993,38 @@ def create_pdf_file(text, template_name="AI Generated Document"):
 
             pdf.ln(2)
 
+        # -----------------------------------------------
+        # Bullet
+        # -----------------------------------------------
+
+        elif line.startswith(
+            ("-", "*", "•")
+        ):
+
+            bullet_text = line[1:].strip()
+
+            pdf.set_font(
+                font_name,
+                "",
+                11
+            )
+
+            pdf.multi_cell(
+                0,
+                7,
+                "• " + bullet_text
+            )
+
+            pdf.ln(1)
+
+        # -----------------------------------------------
+        # Normal paragraph
+        # -----------------------------------------------
+
         else:
 
             pdf.set_font(
-                "Helvetica",
+                font_name,
                 "",
                 11
             )
@@ -935,6 +1036,10 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             )
 
             pdf.ln(1)
+
+    # -----------------------------------------------------
+    # Return PDF bytes
+    # -----------------------------------------------------
 
     return bytes(pdf.output())
     
@@ -2477,82 +2582,76 @@ if st.session_state.final_answer:
 # DOWNLOAD OPTIONS
 # =========================================================
 
-st.markdown("### 📥 Download Your Answer")
+if st.session_state.final_answer:
 
-cleaned_answer = clean_output_text(
-    st.session_state.final_answer
-)
+    st.markdown("### 📥 Download Your Answer")
 
-docx_data = create_docx_file(
-    cleaned_answer,
-    template_name=template_name,
-)
-
-pdf_data = create_pdf_file(
-    cleaned_answer,
-    template_name=template_name,
-)
-
-txt_data = create_txt_file(
-    cleaned_answer
-)
-
-download_col1, download_col2, download_col3 = st.columns(3)
-
-with download_col1:
-
-    st.download_button(
-        "📄 Download Word",
-        data=docx_data,
-        file_name="chainforge_answer.docx",
-        mime=(
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
-        ),
-        use_container_width=True,
+    cleaned_answer = clean_output_text(
+        st.session_state.final_answer
     )
 
-with download_col2:
-
-    st.download_button(
-        "📕 Download PDF",
-        data=pdf_data,
-        file_name="chainforge_answer.pdf",
-        mime="application/pdf",
-        use_container_width=True,
+    docx_data = create_docx_file(
+        cleaned_answer,
+        template_name=template_name,
     )
 
-with download_col3:
-
-    st.download_button(
-        "📝 Download TXT",
-        data=txt_data,
-        file_name="chainforge_answer.txt",
-        mime="text/plain",
-        use_container_width=True,
+    pdf_data = create_pdf_file(
+        cleaned_answer,
+        template_name=template_name,
     )
 
-st.caption(
-    "Word is recommended for letters and emails. "
-    "PDF is recommended for a professional final document."
-)
+    txt_data = create_txt_file(
+        cleaned_answer
+    )
 
-download_col, regenerate_col = st.columns(2)
+    download_col1, download_col2, download_col3 = st.columns(3)
 
-with regenerate_col:
+    with download_col1:
 
-    if st.button(
-        "🔄 Regenerate",
-        use_container_width=True,
-        key="final_answer_regenerate",
-    ):
+        st.download_button(
+            "📄 Download Word",
+            data=docx_data,
+            file_name="chainforge_answer.docx",
+            mime=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+            use_container_width=True,
+            key="download_word",
+        )
 
-        st.session_state.run_completed = False
-        st.session_state.final_answer = ""
-        st.session_state.stage_status = []
-        st.session_state.stage_outputs = []
+    with download_col2:
 
-        st.rerun()
+        st.download_button(
+            "📕 Download PDF",
+            data=pdf_data,
+            file_name="chainforge_answer.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key="download_pdf",
+        )
+
+    with download_col3:
+
+        st.download_button(
+            "📝 Download TXT",
+            data=txt_data,
+            file_name="chainforge_answer.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="download_txt",
+        )
+
+    st.caption(
+        "Word is recommended for letters and emails. "
+        "PDF is recommended for a professional final document."
+    )
+
+    # -----------------------------------------------------
+    # REGENERATE
+    # -----------------------------------------------------
+
+    regenerate_col = st.columns(1)[0]
 
     with regenerate_col:
 
@@ -2568,7 +2667,6 @@ with regenerate_col:
             st.session_state.stage_outputs = []
 
             st.rerun()
-
 
 # =========================================================
 # INTERNAL STAGE RESULTS
