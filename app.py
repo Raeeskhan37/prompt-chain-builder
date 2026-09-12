@@ -853,11 +853,17 @@ def create_docx_file(text, template_name="AI Generated Document"):
 
 def create_pdf_file(text, template_name="AI Generated Document"):
     """
-    Create a Unicode-compatible professional PDF.
+    Create a robust PDF for all ChainForge workflows.
 
-    Uses DejaVu Sans instead of Helvetica so that Unicode
-    characters such as smart quotes, Urdu, Pashto and other
-    supported scripts do not cause FPDF encoding errors.
+    Handles:
+    - Custom Workflow
+    - Email Writer
+    - Content Writer
+    - Study Assistant
+    - Research Assistant
+
+    The PDF generator avoids unsupported Unicode characters when
+    FPDF is forced to use a Latin-1 fallback font.
     """
 
     cleaned = clean_output_text(text)
@@ -870,68 +876,146 @@ def create_pdf_file(text, template_name="AI Generated Document"):
     )
 
     # -----------------------------------------------------
-    # Locate Unicode font
+    # FIND UNICODE FONT
     # -----------------------------------------------------
 
-    possible_fonts = [
+    possible_regular_fonts = [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
     ]
 
-    regular_font = None
-    bold_font = None
+    possible_bold_fonts = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    ]
 
-    for font_path in possible_fonts:
-        if os.path.exists(font_path):
-            if "Bold" in font_path:
-                bold_font = font_path
-            else:
-                regular_font = font_path
+    regular_font = next(
+        (
+            path
+            for path in possible_regular_fonts
+            if os.path.exists(path)
+        ),
+        None,
+    )
+
+    bold_font = next(
+        (
+            path
+            for path in possible_bold_fonts
+            if os.path.exists(path)
+        ),
+        None,
+    )
+
+    unicode_font_available = (
+        regular_font is not None
+        and bold_font is not None
+    )
 
     # -----------------------------------------------------
-    # Register Unicode fonts
+    # REGISTER FONT
     # -----------------------------------------------------
 
-    if regular_font and bold_font:
+    if unicode_font_available:
 
         pdf.add_font(
-            "DejaVu",
+            "ChainForgeFont",
             "",
-            regular_font
+            regular_font,
         )
 
         pdf.add_font(
-            "DejaVu",
+            "ChainForgeFont",
             "B",
-            bold_font
+            bold_font,
         )
 
-        font_name = "DejaVu"
+        font_name = "ChainForgeFont"
 
     else:
-        # Fallback if the server does not have DejaVu.
-        # Clean unsupported characters before using Helvetica.
+
+        # -------------------------------------------------
+        # SAFE LATIN-1 FALLBACK
+        # -------------------------------------------------
+
         font_name = "Helvetica"
 
-        cleaned = cleaned.encode(
-            "latin-1",
-            errors="replace"
-        ).decode("latin-1")
+        def make_pdf_safe(value):
+            """
+            Convert unsupported Unicode characters into
+            PDF-safe equivalents when using Helvetica.
+            """
+
+            if value is None:
+                return ""
+
+            value = str(value)
+
+            replacements = {
+                "•": "-",
+                "‣": "-",
+                "▪": "-",
+                "▫": "-",
+                "◦": "-",
+                "→": "->",
+                "←": "<-",
+                "⇒": "=>",
+                "⇐": "<=",
+                "✓": "[OK]",
+                "✔": "[OK]",
+                "✗": "[X]",
+                "✘": "[X]",
+                "★": "*",
+                "☆": "*",
+                "—": "-",
+                "–": "-",
+                "−": "-",
+                "-": "-",
+                "“": '"',
+                "”": '"',
+                "„": '"',
+                "‘": "'",
+                "’": "'",
+                "‚": "'",
+                "…": "...",
+                "©": "(c)",
+                "®": "(R)",
+                "™": "(TM)",
+                "°": " degrees",
+                "\u00A0": " ",
+            }
+
+            for old, new in replacements.items():
+                value = value.replace(old, new)
+
+            return (
+                value
+                .encode(
+                    "latin-1",
+                    errors="replace",
+                )
+                .decode("latin-1")
+            )
+
+        cleaned = make_pdf_safe(cleaned)
+        template_name = make_pdf_safe(template_name)
 
     # -----------------------------------------------------
-    # Page
+    # ADD PAGE
     # -----------------------------------------------------
 
     pdf.add_page()
 
     # -----------------------------------------------------
-    # Title
+    # TITLE
     # -----------------------------------------------------
 
     pdf.set_font(
         font_name,
         "B",
-        16
+        16,
     )
 
     pdf.cell(
@@ -946,26 +1030,26 @@ def create_pdf_file(text, template_name="AI Generated Document"):
     pdf.ln(4)
 
     # -----------------------------------------------------
-    # Separator
+    # SEPARATOR
     # -----------------------------------------------------
 
     pdf.set_draw_color(
         180,
         180,
-        180
+        180,
     )
 
     pdf.line(
         15,
         pdf.get_y(),
         195,
-        pdf.get_y()
+        pdf.get_y(),
     )
 
     pdf.ln(8)
 
     # -----------------------------------------------------
-    # Content
+    # CONTENT
     # -----------------------------------------------------
 
     lines = cleaned.splitlines()
@@ -979,32 +1063,32 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             continue
 
         # -----------------------------------------------
-        # Subject
+        # SUBJECT
         # -----------------------------------------------
 
         if line.lower().startswith("subject:"):
 
             subject = line.split(
                 ":",
-                1
+                1,
             )[1].strip()
 
             pdf.set_font(
                 font_name,
                 "B",
-                11
+                11,
             )
 
             pdf.multi_cell(
                 0,
                 7,
-                "Subject: " + subject
+                "Subject: " + subject,
             )
 
             pdf.ln(3)
 
         # -----------------------------------------------
-        # Markdown heading
+        # MARKDOWN HEADING
         # -----------------------------------------------
 
         elif line.startswith("#"):
@@ -1014,23 +1098,23 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             pdf.set_font(
                 font_name,
                 "B",
-                13
+                13,
             )
 
             pdf.multi_cell(
                 0,
                 8,
-                heading
+                heading,
             )
 
             pdf.ln(2)
 
         # -----------------------------------------------
-        # Bullet
+        # BULLET
         # -----------------------------------------------
 
         elif line.startswith(
-            ("-", "*", "•")
+            ("-", "*", "•", "‣", "▪", "▫", "◦")
         ):
 
             bullet_text = line[1:].strip()
@@ -1038,19 +1122,37 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             pdf.set_font(
                 font_name,
                 "",
-                11
+                11,
             )
+
+            # IMPORTANT:
+            # Use an ASCII hyphen instead of the Unicode
+            # bullet character. This prevents the FPDF
+            # UnicodeEncodingException when a fallback
+            # font is being used.
+
+            bullet_line = "- " + bullet_text
+
+            if not unicode_font_available:
+                bullet_line = (
+                    bullet_line
+                    .encode(
+                        "latin-1",
+                        errors="replace",
+                    )
+                    .decode("latin-1")
+                )
 
             pdf.multi_cell(
                 0,
                 7,
-                "• " + bullet_text
+                bullet_line,
             )
 
             pdf.ln(1)
 
         # -----------------------------------------------
-        # Normal paragraph
+        # NORMAL PARAGRAPH
         # -----------------------------------------------
 
         else:
@@ -1058,19 +1160,32 @@ def create_pdf_file(text, template_name="AI Generated Document"):
             pdf.set_font(
                 font_name,
                 "",
-                11
+                11,
             )
+
+            paragraph = line
+
+            if not unicode_font_available:
+
+                paragraph = (
+                    paragraph
+                    .encode(
+                        "latin-1",
+                        errors="replace",
+                    )
+                    .decode("latin-1")
+                )
 
             pdf.multi_cell(
                 0,
                 7,
-                line
+                paragraph,
             )
 
             pdf.ln(1)
 
     # -----------------------------------------------------
-    # Return PDF bytes
+    # RETURN PDF
     # -----------------------------------------------------
 
     return bytes(pdf.output())
